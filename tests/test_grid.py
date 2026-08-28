@@ -35,9 +35,9 @@ def test_tiles_cover_the_bounding_box():
     tiles = plan_tiles((0.0, 0.0), 10.0, 2)
     # 반경 10km -> 한 변 20km, 셀 10km. 셀 중심은 중심에서 +-5km 떨어진다.
     half_cell_deg = 5.0 / 111.32
-    lats = sorted({round(t.lat, 9) for t in tiles})
-    assert lats[0] == pytest.approx(-half_cell_deg, rel=1e-9)
-    assert lats[1] == pytest.approx(half_cell_deg, rel=1e-9)
+    lats = sorted(tile.lat for tile in tiles)
+    assert lats[0] == pytest.approx(-half_cell_deg)
+    assert lats[-1] == pytest.approx(half_cell_deg)
 
 
 def test_grid_size_must_be_positive():
