@@ -21,6 +21,8 @@ CATEGORY_SELECTOR = 'button[jsaction*="category"]'
 ADDRESS_SELECTOR = 'button[data-item-id="address"]'
 WEBSITE_SELECTOR = 'a[data-item-id="authority"]'
 RATING_BLOCK_SELECTOR = "div.F7nice"
+PHONE_BUTTON_SELECTOR = "button[data-item-id]"
+RATING_VALUE_SELECTOR = "span[aria-hidden]"
 
 EMPTY_FIELDS = (
     "place_cid",
@@ -68,7 +70,7 @@ def _text(tree: HTMLParser, selector: str) -> str:
 
 def _phone(tree: HTMLParser) -> str:
     """data-item-id 속성에서 번호를 읽는다. 화면 텍스트와 달리 로케일 영향이 없다."""
-    for button in tree.css("button[data-item-id]"):
+    for button in tree.css(PHONE_BUTTON_SELECTOR):
         item_id = button.attributes.get("data-item-id") or ""
         if item_id.startswith(PHONE_ITEM_PREFIX):
             return item_id[len(PHONE_ITEM_PREFIX) :].strip()
@@ -86,7 +88,7 @@ def _rating_and_reviews(tree: HTMLParser) -> tuple[str, str]:
     if block is None:
         return "", ""
 
-    values = [node.text(strip=True) for node in block.css("span[aria-hidden]")]
+    values = [node.text(strip=True) for node in block.css(RATING_VALUE_SELECTOR)]
     rating = ""
     reviews = ""
     for value in values:
