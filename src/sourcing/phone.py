@@ -59,10 +59,34 @@ def wa_number_from_url(url: str) -> str:
     host = parsed.netloc.lower().removeprefix("www.")
     if host not in WA_HOSTS:
         return ""
-    digits = _digits(unquote(parsed.path))
+    digits = _path_number(unquote(parsed.path))
     if not digits:
         digits = _digits(unquote(parse_qs(parsed.query).get("phone", [""])[0]))
-    return f"+{digits}" if digits else ""
+    return _validated_e164(digits) if digits else ""
+
+
+def _path_number(path: str) -> str:
+    """경로가 숫자만으로 된 세그먼트 하나뿐일 때만 번호로 본다.
+
+    wa.me/message/<코드>, wa.me/qr/<코드> 같은 WhatsApp Business 단축링크는
+    경로에 숫자 아닌 세그먼트가 섞여 있으므로 여기서 걸러진다.
+    """
+    segments = [segment for segment in path.split("/") if segment]
+    if len(segments) != 1 or not segments[0].isdigit():
+        return ""
+    return segments[0]
+
+
+def _validated_e164(digits: str) -> str:
+    """숫자열을 +E.164로 만들고 실재 가능한 번호인지 검증한다."""
+    candidate = f"+{digits}"
+    try:
+        num = phonenumbers.parse(candidate, None)
+    except phonenumbers.NumberParseException:
+        return ""
+    if not phonenumbers.is_valid_number(num):
+        return ""
+    return phonenumbers.format_number(num, phonenumbers.PhoneNumberFormat.E164)
 
 
 def wa_link(e164: str) -> str:

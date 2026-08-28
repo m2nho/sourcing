@@ -18,11 +18,17 @@ PHONE_ITEM_PREFIX = "phone:tel:"
 
 NAME_SELECTOR = "h1"
 CATEGORY_SELECTOR = 'button[jsaction*="category"]'
-ADDRESS_SELECTOR = 'button[data-item-id="address"]'
+#: 값은 버튼 안의 div.Io6YTe에만 있다. 버튼 전체를 잡으면 옆의 머티리얼 아이콘
+#: <span>이 담고 있는 사설영역(PUA) 글리프가 텍스트 앞에 섞여 들어온다.
+ADDRESS_SELECTOR = 'button[data-item-id="address"] div.Io6YTe'
 WEBSITE_SELECTOR = 'a[data-item-id="authority"]'
 RATING_BLOCK_SELECTOR = "div.F7nice"
 PHONE_BUTTON_SELECTOR = "button[data-item-id]"
 RATING_VALUE_SELECTOR = "span[aria-hidden]"
+
+#: 머티리얼 아이콘 폰트가 쓰는 사설영역(Private Use Area). 텍스트 추출 시 방어적으로
+#: 걷어낸다 — 셀렉터를 좁혀도 구글이 마크업을 바꾸면 다시 섞여 들어올 수 있다.
+_PUA_PATTERN = re.compile("[\uE000-\uF8FF]")
 
 EMPTY_FIELDS = (
     "place_cid",
@@ -65,7 +71,9 @@ def parse_panel(html: str, maps_url: str) -> dict[str, str]:
 
 def _text(tree: HTMLParser, selector: str) -> str:
     node = tree.css_first(selector)
-    return node.text(strip=True) if node else ""
+    if not node:
+        return ""
+    return _PUA_PATTERN.sub("", node.text(strip=True)).strip()
 
 
 def _phone(tree: HTMLParser) -> str:

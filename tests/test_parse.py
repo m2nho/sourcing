@@ -64,6 +64,14 @@ def test_missing_fields_become_empty_strings():
     assert result["reviews"] == ""
 
 
+def test_address_has_no_material_icon_glyph():
+    # button[data-item-id="address"] 안에 아이콘 <span>이 있으면 사설영역(PUA) 문자가
+    # 텍스트 맨 앞에 섞여 들어올 수 있다. 실제 값만 남아야 한다.
+    result = parse_panel(load("place_panel_icon.html"), PLACE_URL)
+    assert result["address"] == "Jl. Contoh No. 1, Jakarta Selatan"
+    assert not any(0xE000 <= ord(ch) <= 0xF8FF for ch in result["address"])
+
+
 def test_empty_html_yields_all_empty_but_keeps_url():
     result = parse_panel("", PLACE_URL)
     assert result["name"] == ""

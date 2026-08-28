@@ -10,6 +10,9 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
+import phonenumbers
+from playwright.sync_api import TimeoutError as PlaywrightTimeout
+
 from sourcing import maps
 from sourcing.grid import plan_tiles, search_url
 from sourcing.parse import cid_from_url, parse_panel
@@ -18,6 +21,11 @@ from sourcing.store import JsonlStore, PlaceRecord, export_csv
 
 EXIT_OK = 0
 EXIT_BLOCKED = 2
+
+#: 장소 하나를 열 때 재시도할 총 시도 횟수(최초 시도 1회 + 재시도 2회). 스펙 §9.
+RETRY_ATTEMPTS = 3
+#: 재시도 사이 지수 백오프의 기준 초. 테스트에서는 0으로 덮어써 대기 없이 검증한다.
+RETRY_BACKOFF_BASE = 2.0
 
 
 def parse_center(value: str) -> tuple[float, float]:
@@ -28,6 +36,18 @@ def parse_center(value: str) -> tuple[float, float]:
         return float(parts[0]), float(parts[1])
     except ValueError as exc:
         raise argparse.ArgumentTypeError("--center 좌표를 숫자로 읽을 수 없습니다") from exc
+
+
+def parse_region(value: str) -> str:
+    """국가코드를 대문자로 정규화하고 지원 목록에 없으면 즉시 거절한다.
+
+    소문자·오탈자 국가코드는 phonenumbers.parse에서 조용히 실패해 전 레코드가
+    unlikely로 빠지는데, 사용자는 그것과 "타겟 지역 특성"을 구분할 수 없다.
+    """
+    region = (value or "").strip().upper()
+    if region not in phonenumbers.SUPPORTED_REGIONS:
+        raise argparse.ArgumentTypeError(f"--region 값을 알 수 없습니다: {value!r}")
+    return region
 
 
 def parse_delay(value: str) -> tuple[float, float]:
@@ -55,7 +75,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("keyword", help='검색 키워드. 예: "rumah sakit"')
     parser.add_argument(
-        "--region", required=True, help="전화번호 정규화 기준 국가코드. 예: ID, VN, PH"
+        "--region",
+        required=True,
+        type=parse_region,
+        help="전화번호 정규화 기준 국가코드. 예: ID, VN, PH",
     )
     parser.add_argument("--lang", default="en", help="구글 맵 UI 언어 (기본값: en)")
     parser.add_argument("--out", type=Path, default=None, help="CSV 출력 경로")
@@ -126,8 +149,23 @@ def main(argv: list[str] | None = None) -> int:
                         raise _Done
                     if cid_from_url(place_url) in seen:
                         continue
-                    html = _with_block_retry(page, args, lambda: maps.open_place(page, place_url))
-                    fields = parse_panel(html, place_url)
+
+                    try:
+                        html = _with_block_retry(
+                            page, args, lambda: _fetch_place_html(page, place_url)
+                        )
+                        fields = parse_panel(html, place_url)
+                    except maps.Blocked:
+                        raise
+                    except Exception as exc:  # noqa: BLE001 - 장소 하나 실패로 전체를 죽이지 않는다
+                        print(f"  ! {place_url} 처리 실패, 건너뜁니다: {exc}", file=sys.stderr)
+                        continue
+
+                    if not fields.get("name"):
+                        # seen에 넣지 않는다 - 재실행이 다시 시도할 수 있어야 한다.
+                        print(f"  ! 이름 없음, 저장하지 않고 건너뜁니다: {place_url}", file=sys.stderr)
+                        continue
+
                     record = build_record(fields, args.region, args.keyword, label)
                     store.append(record)
                     seen.add(record.place_cid)
@@ -150,6 +188,24 @@ def main(argv: list[str] | None = None) -> int:
 
 class _Done(Exception):
     """--limit 도달 시 중첩 루프를 빠져나오기 위한 내부 신호."""
+
+
+def _fetch_place_html(page, place_url: str) -> str:
+    """장소 페이지를 연다. 타임아웃이면 지수 백오프로 최대 RETRY_ATTEMPTS번 시도한다."""
+    last_exc: PlaywrightTimeout | None = None
+    for attempt in range(RETRY_ATTEMPTS):
+        try:
+            return maps.open_place(page, place_url)
+        except PlaywrightTimeout as exc:
+            last_exc = exc
+            if attempt < RETRY_ATTEMPTS - 1:
+                wait = RETRY_BACKOFF_BASE * (2**attempt)
+                print(
+                    f"  ! 타임아웃 ({attempt + 1}/{RETRY_ATTEMPTS}), {wait:.1f}초 뒤 재시도합니다.",
+                    file=sys.stderr,
+                )
+                time.sleep(wait)
+    raise last_exc
 
 
 def _with_block_retry(page, args, action):

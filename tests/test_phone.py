@@ -51,6 +51,11 @@ def test_normalize_service_number_is_not_mobile():
         ("https://rscontoh.co.id/kontak", ""),
         ("", ""),
         ("https://chat.whatsapp.com/AbCdEf123", ""),
+        # wa.me/message/... , wa.me/qr/... 는 WhatsApp Business 단축링크다.
+        # 경로에 숫자 아닌 세그먼트가 섞여 있으면 번호로 취급하면 안 된다.
+        ("https://wa.me/message/K5H2VQ7N4EXAMPLE", ""),
+        ("https://wa.me/qr/4XKLMN2P3", ""),
+        ("https://wa.me/message/ABCDEFG", ""),
     ],
 )
 def test_wa_number_from_url(url, expected):
