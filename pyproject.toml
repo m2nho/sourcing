@@ -1,0 +1,29 @@
+[project]
+name = "sourcing"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Minho Lee", email = "andy0401@naver.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "phonenumbers>=9.0.38",
+    "playwright>=1.62.0",
+    "selectolax>=0.4.11",
+]
+
+[project.scripts]
+sourcing = "sourcing.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
