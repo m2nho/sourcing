@@ -61,20 +61,42 @@ def wa_number_from_url(url: str) -> str:
         return ""
     digits = _path_number(unquote(parsed.path))
     if not digits:
-        digits = _digits(unquote(parse_qs(parsed.query).get("phone", [""])[0]))
+        phone_param = unquote(parse_qs(parsed.query).get("phone", [""])[0])
+        digits = _segment_digits(phone_param)
     return _validated_e164(digits) if digits else ""
 
 
 def _path_number(path: str) -> str:
-    """경로가 숫자만으로 된 세그먼트 하나뿐일 때만 번호로 본다.
+    """경로가 번호 형태 세그먼트 하나뿐일 때만 번호로 본다.
 
     wa.me/message/<코드>, wa.me/qr/<코드> 같은 WhatsApp Business 단축링크는
-    경로에 숫자 아닌 세그먼트가 섞여 있으므로 여기서 걸러진다.
+    경로에 세그먼트가 두 개 이상 섞여 있으므로 여기서 걸러진다.
     """
     segments = [segment for segment in path.split("/") if segment]
-    if len(segments) != 1 or not segments[0].isdigit():
+    if len(segments) != 1:
         return ""
-    return segments[0]
+    return _segment_digits(segments[0])
+
+
+#: 번호 세그먼트에 허용하는 구분자. 링크 생성기가 흔히 넣는 하이픈·공백·점.
+_ALLOWED_SEPARATORS = frozenset("-. ")
+
+
+def _segment_digits(segment: str) -> str:
+    """세그먼트가 선행 '+' 하나와 숫자·구분자로만 되어 있으면 숫자열을 뽑는다.
+
+    알파벳이 하나라도 섞여 있으면 거부한다 (wa.me/message/..., wa.me/qr/...
+    같은 단축링크 코드를 막는 방어선). '+'가 둘 이상이거나 위치가 맞지
+    않아도 거부한다. 여기서 뽑은 숫자열은 이후 _validated_e164에서 실재
+    가능한 번호인지 다시 검증되므로, 여기서는 형태만 느슨하게 허용한다.
+    """
+    if not segment or any(ch.isalpha() for ch in segment):
+        return ""
+    body = segment[1:] if segment.startswith("+") else segment
+    if not body or any(ch not in _ALLOWED_SEPARATORS and not ch.isdigit() for ch in body):
+        return ""
+    digits = _digits(body)
+    return digits
 
 
 def _validated_e164(digits: str) -> str:

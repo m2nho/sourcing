@@ -56,6 +56,19 @@ def test_normalize_service_number_is_not_mobile():
         ("https://wa.me/message/K5H2VQ7N4EXAMPLE", ""),
         ("https://wa.me/qr/4XKLMN2P3", ""),
         ("https://wa.me/message/ABCDEFG", ""),
+        # 완화 회귀 테스트: 선행 +와 구분자(하이픈)가 있어도 살아나야 한다.
+        ("https://wa.me/+6281234567890", "+6281234567890"),
+        ("https://wa.me/%2B6281234567890", "+6281234567890"),
+        ("https://wa.me/62-812-3456-7890", "+6281234567890"),
+        (
+            "https://api.whatsapp.com/send?phone=%2B6281234567890",
+            "+6281234567890",
+        ),
+        # 완화 이후에도 계속 막혀야 하는 것들 (Critical 회귀 방지).
+        ("https://wa.me/message/K5H2VQ7N4EXAMPLE", ""),
+        ("https://wa.me/qr/4XKLMN2P3", ""),
+        ("https://wa.me/message/ABCDEFG", ""),
+        ("https://wa.me/1234", ""),
     ],
 )
 def test_wa_number_from_url(url, expected):
