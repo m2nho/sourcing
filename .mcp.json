@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "sourcing": {
+      "command": "uv",
+      "args": ["run", "sourcing-mcp"]
+    }
+  }
+}

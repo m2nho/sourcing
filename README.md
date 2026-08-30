@@ -64,6 +64,50 @@ uv run sourcing "hospital" --region PH --center 14.60,120.98 --radius-km 25 --gr
 (실측: 마이애미 클리닉 304건 중 267건), `+1` 번호는 `confirmed`만 리드가 된다.
 즉 미국에서는 웹사이트 훑기가 사실상 유일한 경로다.
 
+## Claude Desktop · Codex에서 쓰기
+
+MCP 서버로 노출돼 있다. 두 클라이언트 모두 stdio MCP를 쓰므로 같은 서버를 쓴다.
+
+Claude Code는 저장소의 `.mcp.json`을 그대로 읽으므로 별도 설정이 필요 없다.
+
+Claude Desktop은 `claude_desktop_config.json`에 아래를 넣는다
+(macOS `~/Library/Application Support/Claude/`, Windows `%APPDATA%\Claude\`):
+
+```json
+{
+  "mcpServers": {
+    "sourcing": {
+      "command": "uv",
+      "args": ["--directory", "/home/ubuntu/doublej/sourcing", "run", "sourcing-mcp"]
+    }
+  }
+}
+```
+
+Codex도 같은 명령을 자기 MCP 설정에 등록하면 된다. `--directory`로 프로젝트
+경로를 명시해야 uv가 이 프로젝트의 가상환경을 찾는다.
+
+### 툴
+
+| 툴 | 하는 일 |
+|---|---|
+| `start_collection` | 수집 시작. **즉시 반환한다** — 실제 수집은 20~40분 걸린다 |
+| `check_collection` | 진행 상황과 현재까지의 집계 |
+| `list_collections` | 이 세션의 작업 목록 |
+| `cancel_collection` | 중단. 수집한 레코드는 남아 재개할 수 있다 |
+| `get_leads` | 결과를 걸러서 읽는다. 레코드 전체가 아니라 필요한 만큼만 |
+| `check_site_whatsapp` | 사이트 한 곳만 확인. 몇 초면 끝난다 |
+
+수집이 오래 걸리므로 작업 방식으로 만들었다. 툴이 40분을 붙들고 있으면
+클라이언트가 타임아웃되고 그동안 대화도 막힌다. `start_collection`은 job_id만
+주고 바로 돌아오며, 진행률은 JSONL 파일에서 읽는다 — 레코드마다 flush되므로
+그 파일이 곧 실시간 진행률이다.
+
+`get_leads`가 레코드 전체를 돌려주지 않는 것도 같은 이유다. 200건을 컨텍스트에
+쏟으면 토큰만 태운다. 요약과 집계를 주고, 필요한 만큼만 잘라 읽게 한다.
+
+동시에 하나의 수집만 돈다. 브라우저가 하나뿐이고 동시 접속은 차단 위험을 키운다.
+
 ## 한계
 
 - 구글 맵 검색 하나는 100~120건에서 잘린다. 지역 전수에 가깝게 가려면
