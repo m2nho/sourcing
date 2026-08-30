@@ -16,7 +16,8 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeout
 from sourcing import maps
 from sourcing.grid import plan_tiles, search_url
 from sourcing.parse import cid_from_url, parse_panel
-from sourcing.phone import classify
+from sourcing.phone import CONFIRMED, classify
+from sourcing.crawl import branch_records, wa_numbers_from_html
 from sourcing.store import JsonlStore, PlaceRecord, export_csv
 
 EXIT_OK = 0
@@ -87,6 +88,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--grid", type=int, default=3, help="한 변의 타일 수 (N x N)")
     parser.add_argument("--delay", type=parse_delay, default=(1.5, 3.5), help="대기 MIN,MAX 초")
     parser.add_argument("--limit", type=int, default=0, help="수집할 최대 장소 수 (0=제한 없음)")
+    parser.add_argument(
+        "--no-crawl",
+        dest="crawl",
+        action="store_false",
+        help="웹사이트를 훑지 않는다. 맵 정보만 쓰므로 훨씬 빠르지만 confirmed는 거의 안 나온다",
+    )
     parser.add_argument("--headful", action="store_true", help="브라우저 창을 띄운다")
     parser.add_argument(
         "--profile", type=Path, default=Path(".browser-profile"), help="브라우저 프로필 경로"
@@ -135,6 +142,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         with maps.browser(args.profile, args.headful, args.lang) as page:
+            site_page = _open_site_page(page) if args.crawl else None
             for index, tile in enumerate(tiles, start=1):
                 label = tile.label if tile else ""
                 url = search_url(args.keyword, tile, args.lang)
@@ -167,10 +175,14 @@ def main(argv: list[str] | None = None) -> int:
                         continue
 
                     record = build_record(fields, args.region, args.keyword, label)
-                    store.append(record)
-                    seen.add(record.place_cid)
-                    collected += 1
-                    print(f"  + {record.name} [{record.whatsapp_status}] {record.phone_e164}")
+                    records = _confirm_from_site(site_page, record, args.crawl)
+                    for item in records:
+                        store.append(item)
+                        seen.add(item.place_cid)
+                        collected += 1
+                        print(
+                            f"  + {item.name} [{item.whatsapp_status}] {item.phone_e164}"
+                        )
                     time.sleep(random.uniform(delay_min, delay_max))
     except _Done:
         pass
@@ -217,3 +229,36 @@ def _with_block_retry(page, args, action):
             raise
         maps.wait_for_human(page)
         return action()
+
+
+def _confirm_from_site(site_page, record: PlaceRecord, enabled: bool) -> list[PlaceRecord]:
+    """웹사이트에서 선언된 WhatsApp 번호를 찾아 레코드를 확정으로 승격시킨다.
+
+    맵 리스팅만으로는 확정이 거의 나오지 않으므로(실측 709건 중 1건), 사이트가
+    있는 곳은 한 번 훑는다. 실패는 경고만 남기고 맵 정보를 그대로 쓴다 —
+    사이트를 못 열었다고 장소를 버릴 이유는 없다.
+    """
+    if not enabled or site_page is None or not record.website:
+        return [record]
+    if record.whatsapp_status == CONFIRMED:
+        return [record]
+
+    try:
+        html = maps.fetch_site_html(site_page, record.website)
+    except Exception as exc:  # noqa: BLE001 - 사이트 실패로 수집을 멈추지 않는다
+        print(f"    ~ 사이트 열기 실패({record.website}): {exc}", file=sys.stderr)
+        return [record]
+
+    numbers = wa_numbers_from_html(html)
+    if not numbers:
+        return [record]
+    return branch_records(record, numbers)
+
+
+def _open_site_page(page):
+    """사이트 방문용 페이지를 연다. 실패하면 크롤만 끄고 수집은 계속한다."""
+    try:
+        return maps.open_site_page(page)
+    except Exception as exc:  # noqa: BLE001 - 페이지 하나 못 열었다고 수집을 멈추지 않는다
+        print(f"사이트 크롤용 페이지를 열지 못해 맵 정보만 씁니다: {exc}", file=sys.stderr)
+        return None

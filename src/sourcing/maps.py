@@ -18,6 +18,13 @@ NAME_SELECTOR = "h1"
 #: URL에 이 조각이 들어오면 구글이 자동화를 감지해 막은 것이다.
 BLOCK_MARKERS = ("/sorry/", "consent.google.com")
 
+#: 외부 사이트는 구글 맵보다 느리고 죽어 있는 경우도 많아 짧게 끊는다.
+SITE_LOAD_TIMEOUT_MS = 20_000
+
+#: 렌더링 후 위젯이 DOM에 붙을 시간. WhatsApp 버튼은 JS로 나중에 삽입되는
+#: 경우가 흔해서 domcontentloaded 직후에는 아직 없다.
+SITE_SETTLE_MS = 2_000
+
 #: 스크롤 높이가 이만큼 연속으로 그대로면 목록 끝으로 본다.
 STAGNANT_LIMIT = 3
 
@@ -101,3 +108,22 @@ def open_place(page: Page, url: str) -> str:
     guard_blocked(page)
     page.wait_for_selector(NAME_SELECTOR, timeout=20_000)
     return page.inner_html(PANEL_SELECTOR)
+
+
+def open_site_page(page: Page) -> Page:
+    """외부 사이트 방문용 페이지를 같은 브라우저 컨텍스트에 연다.
+
+    구글 맵 페이지와 분리해 두어야 사이트 방문이 맵 쪽 상태를 흔들지 않는다.
+    """
+    return page.context.new_page()
+
+
+def fetch_site_html(page: Page, url: str) -> str:
+    """웹사이트를 렌더링해 HTML을 돌려준다.
+
+    정적 요청이 아니라 브라우저로 받는 이유: WhatsApp 버튼을 JS 위젯으로
+    삽입하는 사이트가 흔해서, 원본 HTML만 봐서는 링크가 보이지 않는다.
+    """
+    page.goto(url, wait_until="domcontentloaded", timeout=SITE_LOAD_TIMEOUT_MS)
+    page.wait_for_timeout(SITE_SETTLE_MS)
+    return page.content()

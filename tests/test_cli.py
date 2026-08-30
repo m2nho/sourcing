@@ -5,6 +5,7 @@ import pytest
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 
 from sourcing import cli, maps
+from sourcing.store import PlaceRecord
 from sourcing.cli import build_record, parse_args, parse_center
 
 
@@ -166,3 +167,101 @@ def test_main_does_not_store_empty_name_and_retries_it_on_rerun(tmp_path, monkey
 
     raw_path = out_path.with_suffix(".raw.jsonl")
     assert not raw_path.exists() or raw_path.read_text(encoding="utf-8").strip() == ""
+
+
+class _FakeSitePage:
+    """maps.fetch_site_html이 반환할 HTML을 URL별로 흉내 낸다."""
+
+    def __init__(self, pages: dict[str, str]) -> None:
+        self.pages = pages
+        self.visited: list[str] = []
+
+
+def _install_site_stubs(monkeypatch, pages: dict[str, str]) -> _FakeSitePage:
+    site = _FakeSitePage(pages)
+
+    def fake_open_site_page(page):
+        return site
+
+    def fake_fetch_site_html(site_page, url):
+        site_page.visited.append(url)
+        if url not in site_page.pages:
+            raise RuntimeError("사이트 열기 실패")
+        return site_page.pages[url]
+
+    monkeypatch.setattr(maps, "open_site_page", fake_open_site_page)
+    monkeypatch.setattr(maps, "fetch_site_html", fake_fetch_site_html)
+    return site
+
+
+def test_site_wa_link_promotes_record_to_confirmed(monkeypatch):
+    site = _install_site_stubs(
+        monkeypatch, {"https://klinik.co.id": '<a href="https://wa.me/6281510032464">Chat</a>'}
+    )
+    record = cli.build_record(
+        {
+            "place_cid": "0xa:0xb",
+            "name": "Klinik Contoh",
+            "category": "",
+            "address": "",
+            "phone_raw": "(021) 3915-000",
+            "website": "https://klinik.co.id",
+            "rating": "",
+            "reviews": "",
+            "maps_url": "",
+        },
+        region="ID",
+        query="klinik",
+        tile_label="",
+    )
+    assert record.whatsapp_status == "unlikely"
+
+    [promoted] = cli._confirm_from_site(site, record, enabled=True)
+    assert promoted.whatsapp_status == "confirmed"
+    assert promoted.phone_e164 == "+6281510032464"
+    assert site.visited == ["https://klinik.co.id"]
+
+
+def test_site_with_several_numbers_yields_branch_records(monkeypatch):
+    html = (
+        '<a href="https://wa.me/6281510032464">진료</a>'
+        '<a href="https://wa.me/6285714011402">특진</a>'
+    )
+    site = _install_site_stubs(monkeypatch, {"https://klinik.co.id": html})
+    record = PlaceRecord(
+        place_cid="0xa:0xb", name="Klinik Contoh", website="https://klinik.co.id"
+    )
+
+    records = cli._confirm_from_site(site, record, enabled=True)
+    assert [r.place_cid for r in records] == ["0xa:0xb", "0xa:0xb#1"]
+    assert [r.phone_e164 for r in records] == ["+6281510032464", "+6285714011402"]
+
+
+def test_site_failure_keeps_the_map_record(monkeypatch):
+    site = _install_site_stubs(monkeypatch, {})  # 어떤 URL도 열리지 않는다
+    record = PlaceRecord(
+        place_cid="0xa:0xb",
+        name="Klinik Contoh",
+        phone_e164="+62213915000",
+        whatsapp_status="unlikely",
+        website="https://dead-domain.example",
+    )
+    assert cli._confirm_from_site(site, record, enabled=True) == [record]
+
+
+def test_crawl_disabled_never_touches_the_site(monkeypatch):
+    site = _install_site_stubs(
+        monkeypatch, {"https://klinik.co.id": '<a href="https://wa.me/6281510032464">x</a>'}
+    )
+    record = PlaceRecord(
+        place_cid="0xa:0xb", name="Klinik Contoh", website="https://klinik.co.id"
+    )
+    assert cli._confirm_from_site(site, record, enabled=False) == [record]
+    assert site.visited == []
+
+
+def test_place_without_website_is_not_crawled(monkeypatch):
+    site = _install_site_stubs(monkeypatch, {})
+    record = PlaceRecord(place_cid="0xa:0xb", name="Klinik Contoh", website="")
+    assert cli._confirm_from_site(site, record, enabled=True) == [record]
+    assert site.visited == []
