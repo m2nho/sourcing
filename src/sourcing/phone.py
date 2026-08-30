@@ -7,6 +7,12 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 import phonenumbers
 
+from sourcing.store import (
+    SOURCE_MAP_LINK,
+    SOURCE_MAP_PHONE_GUESS,
+    SOURCE_NONE,
+)
+
 CONFIRMED = "confirmed"
 CANDIDATE = "candidate"
 UNLIKELY = "unlikely"
@@ -32,6 +38,7 @@ class PhoneVerdict:
     type: str
     status: str
     wa_link: str
+    source: str = SOURCE_NONE
 
 
 def normalize(raw: str, region: str) -> tuple[str, str]:
@@ -127,14 +134,14 @@ def classify(raw_phone: str, website: str, region: str) -> PhoneVerdict:
     from_url = wa_number_from_url(website)
     if from_url:
         _, url_type = normalize(from_url, region)
-        return PhoneVerdict(from_url, url_type, CONFIRMED, wa_link(from_url))
+        return PhoneVerdict(from_url, url_type, CONFIRMED, wa_link(from_url), SOURCE_MAP_LINK)
 
     e164, ntype = normalize(raw_phone, region)
     if e164 and _looks_reachable(e164, ntype):
         # candidate는 추측이므로 wa_link를 채우지 않는다. 링크를 붙이면
         # 클릭 가능한 형태가 되어 검증된 창구로 오인된다.
-        return PhoneVerdict(e164, ntype, CANDIDATE, "")
-    return PhoneVerdict(e164, ntype, UNLIKELY, "")
+        return PhoneVerdict(e164, ntype, CANDIDATE, "", SOURCE_MAP_PHONE_GUESS)
+    return PhoneVerdict(e164, ntype, UNLIKELY, "", SOURCE_NONE)
 
 
 def _looks_reachable(e164: str, ntype: str) -> bool:

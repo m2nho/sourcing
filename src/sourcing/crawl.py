@@ -16,7 +16,11 @@ import re
 from dataclasses import replace
 
 from sourcing.phone import CONFIRMED, wa_number_from_url, wa_link
-from sourcing.store import PlaceRecord
+from sourcing.store import (
+    SOURCE_SITE_CONFIRMS_MAP,
+    SOURCE_SITE_LINK,
+    PlaceRecord,
+)
 
 #: WhatsApp click-to-chat 링크의 여러 형태. 위젯이 JSON 안에 이스케이프해
 #: 넣어두는 경우가 흔해서 DOM 앵커만 봐서는 놓친다(실측: KMC 클리닉).
@@ -70,6 +74,11 @@ def branch_records(base: PlaceRecord, numbers: list[str]) -> list[PlaceRecord]:
             phone_e164=number,
             whatsapp_status=CONFIRMED,
             wa_link=wa_link(number),
+            source=(
+                SOURCE_SITE_CONFIRMS_MAP
+                if number == base.phone_e164
+                else SOURCE_SITE_LINK
+            ),
         )
         for index, number in enumerate(numbers)
     ]

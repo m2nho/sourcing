@@ -122,6 +122,7 @@ cli.py ── 인자 파싱, 오케스트레이션, 종료 코드
 | `phone_e164` | `--region` 기준 정규화 결과. 실패 시 빈 값 |
 | `phone_type` | `mobile` / `fixed_line` / `fixed_line_or_mobile` / `unknown` |
 | `whatsapp_status` | `confirmed` / `candidate` / `unlikely` (§6.1) |
+| `source` | 그 번호를 어디서 얻었는지 (§6.2) |
 | `wa_link` | `https://wa.me/<E.164 숫자>`. 상태가 unlikely면 빈 값 |
 | `website` | 맵의 웹사이트 필드 원문 |
 | `rating`, `reviews` | 평점, 리뷰 수 |
@@ -130,6 +131,25 @@ cli.py ── 인자 파싱, 오케스트레이션, 종료 코드
 | `scraped_at` | UTC ISO8601 |
 
 CSV 컬럼 순서는 위 표 순서를 따른다.
+
+### 6.2 근거(`source`)
+
+`confirmed` 안에도 신뢰도가 다른 것들이 섞인다. 담당자가 어디부터 걸지
+정할 수 있도록 출처를 남긴다.
+
+| 값 | 엑셀 라벨 | 의미 |
+|---|---|---|
+| `site_confirms_map` | 홈페이지+맵 일치 | 홈페이지의 wa.me가 맵 대표번호와 같다 — 가장 강한 근거 |
+| `site_link` | 홈페이지 링크 | 홈페이지에서 찾았고 맵에는 없던 번호 |
+| `map_link` | 구글맵 링크 | 맵 웹사이트 필드가 wa.me였다 |
+| `map_phone_guess` | 맵 번호 추정 | 맵 대표번호가 모바일이라는 추정뿐 (`candidate`) |
+| (빈 값) | 근거 없음 | `unlikely` |
+
+### 6.3 엑셀 출력
+
+CSV는 전체 레코드를 보존하는 원본이고, 엑셀(`.xlsx`)은 실제로 연락할 목록이다.
+컬럼은 `병원명 · 위치 · 전화번호 · WhatsApp 링크 · 상태 · 근거` 여섯 개이며,
+`unlikely`는 넣지 않고 `confirmed`를 위로 정렬한다. CSV와 나란히 자동 생성된다.
 
 ### 6.1 WhatsApp 상태 판정 규칙
 

@@ -17,6 +17,7 @@ def test_csv_columns_are_the_agreed_order():
         "phone_e164",
         "phone_type",
         "whatsapp_status",
+        "source",
         "wa_link",
         "website",
         "rating",

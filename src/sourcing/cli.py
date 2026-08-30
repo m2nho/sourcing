@@ -18,6 +18,7 @@ from sourcing.grid import plan_tiles, search_url
 from sourcing.parse import cid_from_url, parse_panel
 from sourcing.phone import CONFIRMED, classify
 from sourcing.crawl import branch_records, wa_numbers_from_html
+from sourcing.excel import write_xlsx
 from sourcing.store import JsonlStore, PlaceRecord, export_csv
 
 EXIT_OK = 0
@@ -115,6 +116,7 @@ def build_record(
         phone_e164=verdict.e164,
         phone_type=verdict.type,
         whatsapp_status=verdict.status,
+        source=verdict.source,
         wa_link=verdict.wa_link,
         website=fields.get("website", ""),
         rating=fields.get("rating", ""),
@@ -194,7 +196,10 @@ def main(argv: list[str] | None = None) -> int:
         print("\n중단됨. 지금까지 수집한 것은 저장되어 있습니다.", file=sys.stderr)
 
     rows = export_csv(store, out_path)
+    xlsx_path = out_path.with_suffix(".xlsx")
+    leads = write_xlsx(store.records(), xlsx_path)
     print(f"\n이번 실행 {collected}건 신규 · 누적 {rows}건 → {out_path}")
+    print(f"연락 가능한 {leads}건 → {xlsx_path}")
     return exit_code
 
 

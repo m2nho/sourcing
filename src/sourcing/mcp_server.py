@@ -56,6 +56,7 @@ class Job:
             "counts": counts,
             "summary": lead_summary(self.raw_jsonl),
             "csv_path": str(self.out_csv),
+            "excel_path": str(self.out_csv.with_suffix(".xlsx")),
         }
         if self.status in (JobStatus.FAILED, JobStatus.BLOCKED):
             payload["log_tail"] = _tail(self.log_path)
@@ -143,6 +144,7 @@ def start_collection(
         "job_id": job_id,
         "note": "수집이 시작됐습니다. check_collection(job_id)로 진행을 확인하세요. 20~40분 걸립니다.",
         "csv_path": str(out_csv),
+        "excel_path": str(out_csv.with_suffix(".xlsx")),
     }
 
 
@@ -176,6 +178,9 @@ def cancel_collection(job_id: str) -> dict:
 @mcp.tool()
 def get_leads(job_id: str = "", csv_path: str = "", status: str = "", limit: int = 20) -> dict:
     """수집 결과를 읽는다. 레코드 전체가 아니라 필요한 만큼만 돌려준다.
+
+    엑셀 파일(.xlsx)은 수집이 끝나면 CSV와 나란히 자동 생성된다. 병원명·위치·
+    전화번호·WhatsApp 링크·상태·근거 여섯 컬럼이며 연락 가능한 곳만 담는다.
 
     Args:
         job_id: start_collection이 준 작업 id. csv_path 대신 쓸 수 있다.

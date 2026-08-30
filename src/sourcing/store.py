@@ -9,6 +9,24 @@ from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 
 
+#: 번호를 어디서 얻었는지. CSV/엑셀의 "근거" 컬럼이 되고, 영업 담당자가
+#: 이 리드를 얼마나 믿을지 판단하는 근거다.
+SOURCE_MAP_LINK = "map_link"                    # 구글맵 웹사이트 필드가 wa.me였다
+SOURCE_SITE_LINK = "site_link"                  # 홈페이지에서 찾았고 맵에는 없던 번호
+SOURCE_SITE_CONFIRMS_MAP = "site_confirms_map"  # 홈페이지가 맵 대표번호를 확인해줬다
+SOURCE_MAP_PHONE_GUESS = "map_phone_guess"      # 맵 대표번호가 모바일이라는 추정뿐
+SOURCE_NONE = ""                                # 근거 없음
+
+#: 사람이 읽는 라벨. 엑셀에 이 문구가 그대로 들어간다.
+SOURCE_LABELS = {
+    SOURCE_MAP_LINK: "구글맵 링크",
+    SOURCE_SITE_LINK: "홈페이지 링크",
+    SOURCE_SITE_CONFIRMS_MAP: "홈페이지+맵 일치",
+    SOURCE_MAP_PHONE_GUESS: "맵 번호 추정",
+    SOURCE_NONE: "근거 없음",
+}
+
+
 @dataclass
 class PlaceRecord:
     """맵 장소 하나. 필드 선언 순서가 CSV 컬럼 순서다."""
@@ -21,6 +39,7 @@ class PlaceRecord:
     phone_e164: str = ""
     phone_type: str = "unknown"
     whatsapp_status: str = "unlikely"
+    source: str = ""
     wa_link: str = ""
     website: str = ""
     rating: str = ""

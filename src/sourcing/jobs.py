@@ -25,6 +25,7 @@ LEAD_COLUMNS = (
     "name",
     "phone_e164",
     "whatsapp_status",
+    "source",
     "wa_link",
     "website",
     "address",
