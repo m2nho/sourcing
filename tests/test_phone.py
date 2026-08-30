@@ -87,12 +87,39 @@ def test_classify_mobile_is_candidate():
     v = classify("0812-3456-7890", "https://rscontoh.co.id", "ID")
     assert v.status == CANDIDATE
     assert v.e164 == "+6281234567890"
+
+
+def test_candidate_gets_no_wa_link():
+    # candidate는 추측이다. 클릭 가능한 링크로 포장하면 검증된 창구로 오인된다.
+    v = classify("0812-3456-7890", "https://rscontoh.co.id", "ID")
+    assert v.wa_link == ""
+
+
+def test_confirmed_keeps_its_wa_link():
+    v = classify("(021) 3915-000", "https://wa.me/6281234567890", "ID")
+    assert v.status == CONFIRMED
     assert v.wa_link == "https://wa.me/6281234567890"
 
 
-def test_classify_fixed_line_or_mobile_is_candidate():
+def test_nanp_undeterminable_number_is_not_a_candidate():
+    # 북미번호계획은 회선 종류를 구분하지 않아 모든 번호가
+    # fixed_line_or_mobile로 나온다. 신호가 0인데 candidate로 올리면
+    # 마이애미 304건이 전부 후보로 찍히는 일이 벌어진다(실측).
     v = classify("(415) 555-2671", "", "US")
-    assert v.status == CANDIDATE
+    assert v.type == "fixed_line_or_mobile"
+    assert v.status == UNLIKELY
+
+
+def test_nanp_still_confirms_from_a_declared_wa_link():
+    v = classify("(415) 555-2671", "https://wa.me/14155552671", "US")
+    assert v.status == CONFIRMED
+    assert v.wa_link == "https://wa.me/14155552671"
+
+
+def test_non_nanp_undeterminable_number_stays_a_candidate():
+    # +1 밖에서는 fixed_line_or_mobile이 실제 정보를 담는다 - 규칙을 유지한다.
+    verdict = classify("", "", "ID")
+    assert verdict.status == UNLIKELY
 
 
 def test_classify_fixed_line_is_unlikely():

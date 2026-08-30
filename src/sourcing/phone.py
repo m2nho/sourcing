@@ -116,6 +116,12 @@ def wa_link(e164: str) -> str:
     return f"https://wa.me/{e164.lstrip('+')}" if e164 else ""
 
 
+#: 북미번호계획(+1) 국가들. NANP는 지역번호로 유선/모바일을 나누지 않아
+#: 모든 번호가 fixed_line_or_mobile로 나온다 - 유형이 정보를 전혀 담지 않는다.
+#: 실측: 마이애미 클리닉 304건 중 267건이 이 유형, mobile도 fixed_line도 0건.
+NANP_PREFIX = "+1"
+
+
 def classify(raw_phone: str, website: str, region: str) -> PhoneVerdict:
     """맵 리스팅의 전화·웹사이트로 WhatsApp 연락 가능성을 판정한다."""
     from_url = wa_number_from_url(website)
@@ -124,9 +130,26 @@ def classify(raw_phone: str, website: str, region: str) -> PhoneVerdict:
         return PhoneVerdict(from_url, url_type, CONFIRMED, wa_link(from_url))
 
     e164, ntype = normalize(raw_phone, region)
-    if e164 and ntype in _MOBILE_ISH:
-        return PhoneVerdict(e164, ntype, CANDIDATE, wa_link(e164))
+    if e164 and _looks_reachable(e164, ntype):
+        # candidate는 추측이므로 wa_link를 채우지 않는다. 링크를 붙이면
+        # 클릭 가능한 형태가 되어 검증된 창구로 오인된다.
+        return PhoneVerdict(e164, ntype, CANDIDATE, "")
     return PhoneVerdict(e164, ntype, UNLIKELY, "")
+
+
+def _looks_reachable(e164: str, ntype: str) -> bool:
+    """번호 유형이 WhatsApp 가능성을 실제로 시사하는가.
+
+    NANP에서는 fixed_line_or_mobile이 "구분 불가"를 뜻할 뿐 아무 정보도
+    담지 않으므로 후보로 올리지 않는다. 그 밖의 지역에서는 유지한다 -
+    베트남·필리핀 일부 번호대가 실제로 이 유형이고, 그쪽에서는 모바일일
+    확률이 높다는 정보가 된다.
+    """
+    if ntype not in _MOBILE_ISH:
+        return False
+    if e164.startswith(NANP_PREFIX) and ntype == "fixed_line_or_mobile":
+        return False
+    return True
 
 
 def _digits(text: str) -> str:

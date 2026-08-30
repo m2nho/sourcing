@@ -138,10 +138,21 @@ CSV 컬럼 순서는 위 표 순서를 따른다.
 1. `website`가 `wa.me` 또는 `api.whatsapp.com` 호스트 → **`confirmed`**.
    링크에서 번호를 추출해 `phone_e164`보다 우선한다.
 2. `phone_type`이 `mobile` 또는 `fixed_line_or_mobile` → **`candidate`**.
+   단 `+1`(북미번호계획) 번호의 `fixed_line_or_mobile`은 제외한다.
 3. 그 외(유선, 정규화 실패, 번호 없음) → **`unlikely`**.
 
 `fixed_line_or_mobile`을 candidate에 넣는 이유: 필리핀·베트남 일부 번호대는
 `phonenumbers`가 둘을 구분하지 못하는데, 이 지역에서는 WhatsApp일 확률이 더 높다.
+
+**NANP 예외 (2026-08-30 실측 반영):** 북미번호계획은 지역번호로 회선 종류를
+나누지 않아 모든 번호가 `fixed_line_or_mobile`로 나온다 — 마이애미 클리닉
+304건 중 267건이 이 유형이었고 `mobile`도 `fixed_line`도 0건이었다. 이 유형이
+아무 정보도 담지 않으므로 후보로 올리지 않는다. 미국에서 리드가 되는 것은
+`confirmed`뿐이다.
+
+**`wa_link`는 `confirmed`에만 채운다.** `candidate`는 추측이며, 그것을 클릭
+가능한 링크로 포장하면 CSV를 받은 사람이 검증된 창구로 오인한다. `candidate`의
+`phone_e164`는 그대로 남으므로 번호 자체는 쓸 수 있다.
 
 ## 7. 격자 타일링
 
