@@ -66,7 +66,17 @@ def test_read_leads_returns_only_useful_columns(tmp_path):
     path = tmp_path / "raw.jsonl"
     write_jsonl(path, [rec("1", "confirmed", wa="https://wa.me/6281234567890")])
     [row] = read_leads(path, status=None, limit=1)
-    assert set(row) == {"name", "phone_e164", "whatsapp_status", "wa_link", "website", "address", "maps_url"} | {"place_cid"}
+    assert set(row) == {
+        "place_cid",
+        "name",
+        "phone_e164",
+        "whatsapp_status",
+        "source",
+        "wa_link",
+        "website",
+        "address",
+        "maps_url",
+    }
 
 
 def test_lead_summary_is_compact(tmp_path):
