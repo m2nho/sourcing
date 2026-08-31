@@ -97,8 +97,22 @@ Claude Desktop은 `claude_desktop_config.json`에 아래를 넣는다
 }
 ```
 
-Codex도 같은 명령을 자기 MCP 설정에 등록하면 된다. `--directory`로 프로젝트
-경로를 명시해야 uv가 이 프로젝트의 가상환경을 찾는다.
+Codex는 저장소의 `.codex/config.toml`을 그대로 쓴다 — 클론한 디렉터리에서
+codex를 실행하면 바로 잡힌다. 전역으로 등록하려면 둘 중 하나를 쓴다.
+
+```bash
+codex mcp add sourcing -- uv --directory <클론한 절대경로> run sourcing-mcp
+```
+
+또는 `~/.codex/config.toml`에 직접:
+
+```toml
+[mcp_servers.sourcing]
+command = "uv"
+args = ["--directory", "<클론한 절대경로>", "run", "sourcing-mcp"]
+```
+
+`--directory`로 프로젝트 경로를 명시해야 uv가 이 프로젝트의 가상환경을 찾는다.
 
 ### 툴
 

@@ -196,7 +196,7 @@ def _install_site_stubs(monkeypatch, pages: dict[str, str]) -> _FakeSitePage:
 
 def test_site_wa_link_promotes_record_to_confirmed(monkeypatch):
     site = _install_site_stubs(
-        monkeypatch, {"https://klinik.co.id": '<a href="https://wa.me/6281510032464">Chat</a>'}
+        monkeypatch, {"https://klinik.co.id": '<a href="https://wa.me/6281100000001">Chat</a>'}
     )
     record = cli.build_record(
         {
@@ -218,14 +218,14 @@ def test_site_wa_link_promotes_record_to_confirmed(monkeypatch):
 
     [promoted] = cli._confirm_from_site(site, record, enabled=True)
     assert promoted.whatsapp_status == "confirmed"
-    assert promoted.phone_e164 == "+6281510032464"
+    assert promoted.phone_e164 == "+6281100000001"
     assert site.visited == ["https://klinik.co.id"]
 
 
 def test_site_with_several_numbers_yields_branch_records(monkeypatch):
     html = (
-        '<a href="https://wa.me/6281510032464">진료</a>'
-        '<a href="https://wa.me/6285714011402">특진</a>'
+        '<a href="https://wa.me/6281100000001">진료</a>'
+        '<a href="https://wa.me/6281100000002">특진</a>'
     )
     site = _install_site_stubs(monkeypatch, {"https://klinik.co.id": html})
     record = PlaceRecord(
@@ -234,7 +234,7 @@ def test_site_with_several_numbers_yields_branch_records(monkeypatch):
 
     records = cli._confirm_from_site(site, record, enabled=True)
     assert [r.place_cid for r in records] == ["0xa:0xb", "0xa:0xb#1"]
-    assert [r.phone_e164 for r in records] == ["+6281510032464", "+6285714011402"]
+    assert [r.phone_e164 for r in records] == ["+6281100000001", "+6281100000002"]
 
 
 def test_site_failure_keeps_the_map_record(monkeypatch):
@@ -251,7 +251,7 @@ def test_site_failure_keeps_the_map_record(monkeypatch):
 
 def test_crawl_disabled_never_touches_the_site(monkeypatch):
     site = _install_site_stubs(
-        monkeypatch, {"https://klinik.co.id": '<a href="https://wa.me/6281510032464">x</a>'}
+        monkeypatch, {"https://klinik.co.id": '<a href="https://wa.me/6281100000001">x</a>'}
     )
     record = PlaceRecord(
         place_cid="0xa:0xb", name="Klinik Contoh", website="https://klinik.co.id"

@@ -15,14 +15,14 @@ def load(name: str) -> str:
 def test_extracts_every_department_number_from_escaped_json():
     # 실제 캡처: 위젯이 JSON 안에 이스케이프된 형태로 링크를 담고 있다
     assert wa_numbers_from_html(load("site_wa_href.html")) == [
-        "+6281510032464",
-        "+6285714011402",
-        "+62881011411664",
+        "+6281100000001",
+        "+6281100000002",
+        "+6281100000003",
     ]
 
 
 def test_extracts_api_whatsapp_send_query_form():
-    assert wa_numbers_from_html(load("site_wa_api.html")) == ["+6282123111285"]
+    assert wa_numbers_from_html(load("site_wa_api.html")) == ["+6281100000004"]
 
 
 def test_ignores_ordinary_links():
@@ -77,24 +77,24 @@ def test_no_numbers_leaves_the_record_untouched():
 
 
 def test_first_number_promotes_the_record_to_confirmed():
-    [record] = branch_records(base_record(), ["+6281510032464"])
+    [record] = branch_records(base_record(), ["+6281100000001"])
     assert record.place_cid == "0xa:0xb"
     assert record.whatsapp_status == "confirmed"
-    assert record.phone_e164 == "+6281510032464"
-    assert record.wa_link == "https://wa.me/6281510032464"
+    assert record.phone_e164 == "+6281100000001"
+    assert record.wa_link == "https://wa.me/6281100000001"
     # 맵에 적혀 있던 원문 번호는 보존한다
     assert record.phone_raw == "(021) 3915-000"
 
 
 def test_extra_numbers_become_separate_records_like_branches():
     records = branch_records(
-        base_record(), ["+6281510032464", "+6285714011402", "+62881011411664"]
+        base_record(), ["+6281100000001", "+6281100000002", "+6281100000003"]
     )
     assert [r.place_cid for r in records] == ["0xa:0xb", "0xa:0xb#1", "0xa:0xb#2"]
     assert [r.phone_e164 for r in records] == [
-        "+6281510032464",
-        "+6285714011402",
-        "+62881011411664",
+        "+6281100000001",
+        "+6281100000002",
+        "+6281100000003",
     ]
     assert all(r.whatsapp_status == "confirmed" for r in records)
     assert all(r.name == "Klinik Contoh" for r in records)
@@ -102,6 +102,6 @@ def test_extra_numbers_become_separate_records_like_branches():
 
 def test_branch_records_do_not_mutate_the_input():
     base = base_record()
-    branch_records(base, ["+6281510032464"])
+    branch_records(base, ["+6281100000001"])
     assert base.whatsapp_status == "unlikely"
     assert base.phone_e164 == "+62213915000"

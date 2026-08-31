@@ -39,18 +39,18 @@ def base(phone_e164: str = "+62213915000") -> PlaceRecord:
 
 
 def test_site_number_that_map_did_not_have_is_site_link():
-    [rec] = branch_records(base(), ["+6281510032464"])
+    [rec] = branch_records(base(), ["+6281100000001"])
     assert rec.source == SOURCE_SITE_LINK
 
 
 def test_site_number_matching_the_map_phone_is_the_combined_case():
     # 맵의 추측을 사이트가 증명한 경우 - 가장 강한 근거다
-    [rec] = branch_records(base("+6281510032464"), ["+6281510032464"])
+    [rec] = branch_records(base("+6281100000001"), ["+6281100000001"])
     assert rec.source == SOURCE_SITE_CONFIRMS_MAP
 
 
 def test_each_extra_branch_number_is_a_site_link():
-    records = branch_records(base("+6281510032464"), ["+6281510032464", "+6285714011402"])
+    records = branch_records(base("+6281100000001"), ["+6281100000001", "+6281100000002"])
     assert [r.source for r in records] == [SOURCE_SITE_CONFIRMS_MAP, SOURCE_SITE_LINK]
 
 

@@ -9,7 +9,7 @@ from sourcing.store import (
 )
 
 
-def rec(name, status, source, phone="+6281510032464", address="Jl. Contoh 1", wa="", cid=None):
+def rec(name, status, source, phone="+6281100000001", address="Jl. Contoh 1", wa="", cid=None):
     return PlaceRecord(
         place_cid=cid or f"0xa:{name}",
         name=name,

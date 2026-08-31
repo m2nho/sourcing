@@ -1,0 +1,7 @@
+# Codex 프로젝트 스코프 MCP 설정.
+# Codex는 신뢰하지 않는 프로젝트의 로컬 설정을 무시하므로 trust_level이 필요하다.
+trust_level = "trusted"
+
+[mcp_servers.sourcing]
+command = "uv"
+args = ["run", "sourcing-mcp"]
