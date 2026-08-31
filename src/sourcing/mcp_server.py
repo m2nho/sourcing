@@ -128,7 +128,8 @@ def start_collection(
         cwd=PROJECT_ROOT,
         stdout=log_file,
         stderr=subprocess.STDOUT,
-        start_new_session=True,  # 취소할 때 자식 브라우저까지 함께 정리한다
+        # POSIX에서는 새 세션으로 띄워야 취소할 때 자식 브라우저까지 함께 정리된다.
+        start_new_session=(os.name == "posix"),
     )
     job = Job(
         job_id=job_id,
@@ -171,7 +172,7 @@ def cancel_collection(job_id: str) -> dict:
         return {"error": f"모르는 작업입니다: {job_id}"}
     if job.status is not JobStatus.RUNNING:
         return {"cancelled": False, "reason": "이미 끝난 작업입니다.", "job": job.snapshot()}
-    os.killpg(os.getpgid(job.process.pid), signal.SIGTERM)
+    _terminate(job.process)
     return {"cancelled": True, "note": "수집한 레코드는 JSONL에 남아 있어 같은 조건으로 재개할 수 있습니다."}
 
 
@@ -226,6 +227,18 @@ def check_site_whatsapp(url: str) -> dict:
         "wa_links": [f"https://wa.me/{n.lstrip('+')}" for n in numbers],
         "found": bool(numbers),
     }
+
+
+def _terminate(process) -> None:
+    """수집 프로세스를 끝낸다.
+
+    POSIX에서는 프로세스 그룹째 보내야 Playwright가 띄운 크로미움까지 정리된다.
+    Windows에는 프로세스 그룹이 없으므로 terminate()로 떨어진다.
+    """
+    if os.name == "posix":
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+    else:
+        process.terminate()
 
 
 def _running_job() -> Job | None:

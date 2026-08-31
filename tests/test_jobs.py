@@ -92,3 +92,39 @@ def test_lead_summary_is_compact(tmp_path):
 )
 def test_status_from_return_code(returncode, expected):
     assert JobStatus.from_returncode(returncode) is expected
+
+
+def test_terminate_uses_process_group_on_posix(monkeypatch):
+    """POSIX에서는 프로세스 그룹째 죽여야 자식 브라우저까지 정리된다."""
+    from sourcing import mcp_server
+
+    killed = {}
+    monkeypatch.setattr(mcp_server.os, "name", "posix")
+    monkeypatch.setattr(mcp_server.os, "getpgid", lambda pid: 999)
+    monkeypatch.setattr(mcp_server.os, "killpg", lambda pgid, sig: killed.update(pgid=pgid))
+
+    class FakeProcess:
+        pid = 123
+
+        def terminate(self):
+            killed["terminate"] = True
+
+    mcp_server._terminate(FakeProcess())
+    assert killed == {"pgid": 999}
+
+
+def test_terminate_falls_back_to_terminate_off_posix(monkeypatch):
+    """Windows에는 프로세스 그룹이 없다. terminate()로 떨어져야 한다."""
+    from sourcing import mcp_server
+
+    killed = {}
+    monkeypatch.setattr(mcp_server.os, "name", "nt")
+
+    class FakeProcess:
+        pid = 123
+
+        def terminate(self):
+            killed["terminate"] = True
+
+    mcp_server._terminate(FakeProcess())
+    assert killed == {"terminate": True}

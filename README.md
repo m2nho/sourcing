@@ -4,11 +4,24 @@
 
 ## 설치
 
+다른 컴퓨터에 옮길 때도 이 순서 그대로다.
+
+```bash
+git clone <저장소 URL>
+cd sourcing
+
+mise install                      # Python 3.13 고정 (mise.toml)
+uv sync                           # 의존성 설치 (uv.lock 그대로 재현)
+uv run playwright install chromium # 브라우저 바이너리 (~200MB, 몇 분 걸림)
+
+uv run pytest                     # 141개 통과하면 준비 완료
 ```
-mise install
-uv sync
-uv run playwright install chromium
-```
+
+`mise`가 없으면 시스템 Python 3.13으로도 된다 — `uv sync`가 알아서 잡는다.
+`playwright install`을 빠뜨리면 수집할 때 브라우저를 못 찾는다는 오류가 난다.
+
+macOS·Windows·Linux 모두 동작한다. 실행 중인 수집을 취소하는 경로만
+플랫폼별로 갈라져 있고 나머지는 동일하다.
 
 ## 사용
 
@@ -78,7 +91,7 @@ Claude Desktop은 `claude_desktop_config.json`에 아래를 넣는다
   "mcpServers": {
     "sourcing": {
       "command": "uv",
-      "args": ["--directory", "/home/ubuntu/doublej/sourcing", "run", "sourcing-mcp"]
+      "args": ["--directory", "<이 저장소를 클론한 절대경로>", "run", "sourcing-mcp"]
     }
   }
 }
