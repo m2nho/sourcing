@@ -82,25 +82,18 @@ class SetupError(Exception):
     """사용자에게 그대로 보여줄 수 있는 실패."""
 
 
-def enable_utf8_console() -> None:
-    """콘솔이 한글을 찍을 수 있게 만든다.
+def make_console_forgiving() -> None:
+    """한글을 못 찍는 콘솔에서도 죽지 않게 한다.
 
-    한국어 Windows는 cp949라 그대로도 되지만, 영문 Windows(cp437)에서는
-    한글 출력이 UnicodeEncodeError로 죽는다. 받는 분이 어떤 Windows를 쓰는지
-    알 수 없으므로 코드페이지를 UTF-8로 올리고, 그래도 안 되면 글자를
-    대체 문자로 바꿔서라도 안내가 보이게 한다.
+    인코딩 자체는 건드리지 않는다. 한국어 Windows는 cp949로 한글을 정상
+    출력하는데, 여기서 UTF-8로 바꾸면 오히려 깨진다(실측). 영문
+    Windows(cp437)에서는 한글이 물음표로 나오지만, UnicodeEncodeError로
+    설치가 멈추는 것보다는 낫다.
     """
-    if sys.platform == "win32":
-        try:
-            import ctypes
-
-            ctypes.windll.kernel32.SetConsoleOutputCP(65001)
-        except Exception:  # noqa: BLE001 - 콘솔 설정 실패로 설치를 멈출 이유는 없다
-            pass
     for stream in (sys.stdout, sys.stderr):
         try:
-            stream.reconfigure(encoding="utf-8", errors="replace")
-        except Exception:  # noqa: BLE001
+            stream.reconfigure(errors="replace")
+        except Exception:  # noqa: BLE001 - 콘솔 설정 실패로 설치를 멈출 이유는 없다
             pass
 
 
@@ -250,7 +243,7 @@ def verify() -> None:
 
 
 def main() -> int:
-    enable_utf8_console()
+    make_console_forgiving()
     say("=" * 58)
     say("  병원 WhatsApp 연락처 수집 도구 설치")
     say("=" * 58)
