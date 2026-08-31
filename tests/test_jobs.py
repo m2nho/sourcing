@@ -128,3 +128,17 @@ def test_terminate_falls_back_to_terminate_off_posix(monkeypatch):
 
     mcp_server._terminate(FakeProcess())
     assert killed == {"terminate": True}
+
+
+def test_subprocess_env_forces_utf8_output():
+    """Windows 기본 콘솔 인코딩(cp949)에서 한글·인니어 출력이 깨지지 않게 한다."""
+    from sourcing.mcp_server import _subprocess_env
+
+    env = _subprocess_env()
+    assert env["PYTHONIOENCODING"] == "utf-8"
+    assert env["PYTHONUTF8"] == "1"
+    # 기존 환경변수는 보존해야 한다 (PATH가 없으면 uv를 못 찾는다)
+    import os as _os
+
+    if "PATH" in _os.environ:
+        assert env["PATH"] == _os.environ["PATH"]

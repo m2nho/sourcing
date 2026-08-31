@@ -129,6 +129,7 @@ def start_collection(
         cwd=PROJECT_ROOT,
         stdout=log_file,
         stderr=subprocess.STDOUT,
+        env=_subprocess_env(),
         # POSIX에서는 새 세션으로 띄워야 취소할 때 자식 브라우저까지 함께 정리된다.
         start_new_session=(os.name == "posix"),
     )
@@ -259,6 +260,16 @@ def check_site_whatsapp(url: str) -> dict:
         "wa_links": [f"https://wa.me/{n.lstrip('+')}" for n in numbers],
         "found": bool(numbers),
     }
+
+
+def _subprocess_env() -> dict[str, str]:
+    """수집 프로세스가 UTF-8로 출력하게 강제한다.
+
+    한국어 Windows의 기본 콘솔 인코딩은 cp949라, 병원 이름(인니어)과 진행
+    메시지(한국어)를 찍을 때 UnicodeEncodeError로 죽는다. POSIX에서는 이미
+    UTF-8이라 영향이 없다.
+    """
+    return {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
 
 
 def _terminate(process) -> None:

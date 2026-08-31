@@ -4,24 +4,39 @@
 
 ## 설치
 
-다른 컴퓨터에 옮길 때도 이 순서 그대로다.
+### Windows
 
-```bash
-git clone <저장소 URL>
+`mise`는 Windows 지원이 제한적이라 쓰지 않는다. `uv`가 Python 3.13을 알아서
+받아온다 (`.python-version`을 읽는다).
+
+PowerShell에서:
+
+```powershell
+# uv 설치 (이미 있으면 건너뛴다)
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+git clone https://github.com/m2nho/sourcing.git
 cd sourcing
 
-mise install                      # Python 3.13 고정 (mise.toml)
-uv sync                           # 의존성 설치 (uv.lock 그대로 재현)
-uv run playwright install chromium # 브라우저 바이너리 (~200MB, 몇 분 걸림)
+uv sync                              # Python 3.13까지 알아서 받아온다
+uv run playwright install chromium   # 브라우저 (~200MB)
 
-uv run pytest                     # 141개 통과하면 준비 완료
+uv run pytest                        # 145개 통과하면 준비 완료
 ```
 
-`mise`가 없으면 시스템 Python 3.13으로도 된다 — `uv sync`가 알아서 잡는다.
-`playwright install`을 빠뜨리면 수집할 때 브라우저를 못 찾는다는 오류가 난다.
+`uv`를 설치한 창에서는 PATH가 아직 갱신되지 않았을 수 있다. 터미널을 새로
+열고 `uv --version`이 되는지 확인한다.
 
-macOS·Windows·Linux 모두 동작한다. 실행 중인 수집을 취소하는 경로만
-플랫폼별로 갈라져 있고 나머지는 동일하다.
+### macOS · Linux
+
+```bash
+mise install                        # Python 3.13 (mise.toml)
+uv sync
+uv run playwright install chromium
+uv run pytest
+```
+
+`mise`가 없으면 생략해도 된다 — `uv sync`가 Python을 알아서 잡는다.
 
 ## 사용
 
@@ -113,6 +128,9 @@ args = ["--directory", "<클론한 절대경로>", "run", "sourcing-mcp"]
 ```
 
 `--directory`로 프로젝트 경로를 명시해야 uv가 이 프로젝트의 가상환경을 찾는다.
+
+Windows 경로는 JSON·TOML에서 역슬래시를 두 번 쓰거나 슬래시로 적는다:
+`"C:\\Users\\me\\sourcing"` 또는 `"C:/Users/me/sourcing"`.
 
 ### 툴
 
