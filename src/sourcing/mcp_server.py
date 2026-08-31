@@ -21,6 +21,7 @@ from pathlib import Path
 from mcp.server import MCPServer
 
 from sourcing.crawl import wa_numbers_from_html
+from sourcing.excel import write_xlsx_from_jsonl
 from sourcing.jobs import JobStatus, lead_summary, new_job_id, read_leads, tally
 
 #: 결과 파일을 두는 곳. 환경변수로 바꿀 수 있다.
@@ -200,6 +201,37 @@ def get_leads(job_id: str = "", csv_path: str = "", status: str = "", limit: int
         "counts": tally(raw),
         "leads": read_leads(raw, status or None, max(1, limit)),
         "source": str(raw),
+    }
+
+
+@mcp.tool()
+def export_excel(job_id: str = "", csv_path: str = "", out_path: str = "") -> dict:
+    """수집 결과를 엑셀(.xlsx)로 다시 뽑는다.
+
+    수집이 정상으로 끝나면 엑셀은 자동 생성된다. 이 툴은 그러지 못한 경우를
+    위한 것이다 — cancel_collection으로 중단해 마무리 코드에 도달하지 못했거나,
+    예전에 모은 데이터를 지금 형식으로 다시 만들고 싶을 때.
+
+    재개 원장(.raw.jsonl)에서 만들므로 수집 도중에도 현재까지의 결과를 뽑을 수 있다.
+
+    Args:
+        job_id: start_collection이 준 작업 id.
+        csv_path: 결과 CSV 경로. job_id 대신 쓸 수 있고, 이전 세션의 결과에 쓴다.
+        out_path: 저장할 .xlsx 경로. 비우면 CSV와 같은 이름으로 나란히 만든다.
+    """
+    raw = _resolve_raw_path(job_id, csv_path)
+    if raw is None:
+        return {"error": "job_id 또는 csv_path 중 하나가 필요합니다."}
+    if not raw.exists():
+        return {"error": f"결과 파일이 없습니다: {raw}"}
+
+    destination = Path(out_path) if out_path else raw.with_suffix("").with_suffix(".xlsx")
+    written = write_xlsx_from_jsonl(raw, destination)
+    return {
+        "excel_path": str(destination),
+        "rows": written,
+        "summary": lead_summary(raw),
+        "note": "연락 가능한 레코드만 담았습니다. 전체는 CSV에 있습니다.",
     }
 
 

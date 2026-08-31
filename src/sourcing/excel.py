@@ -18,7 +18,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from sourcing.store import SOURCE_LABELS, PlaceRecord
+from sourcing.store import SOURCE_LABELS, JsonlStore, PlaceRecord
 
 EXCEL_HEADERS = ["병원명", "위치", "전화번호", "WhatsApp 링크", "상태", "근거"]
 
@@ -74,3 +74,12 @@ def write_xlsx(records: Iterable[PlaceRecord], path: Path) -> int:
     sheet.auto_filter.ref = f"A1:{get_column_letter(len(EXCEL_HEADERS))}{sheet.max_row}"
     workbook.save(path)
     return len(rows)
+
+
+def write_xlsx_from_jsonl(raw_jsonl: Path, out_path: Path) -> int:
+    """재개 원장(JSONL)에서 엑셀을 다시 만든다. 쓴 행 수를 돌려준다.
+
+    수집이 취소되면 CLI의 마무리 코드에 도달하지 못해 엑셀이 남지 않는다.
+    JSONL은 레코드마다 flush되므로 그것만 있으면 언제든 복원할 수 있다.
+    """
+    return write_xlsx(JsonlStore(Path(raw_jsonl)).records(), out_path)

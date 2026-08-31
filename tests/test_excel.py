@@ -9,9 +9,9 @@ from sourcing.store import (
 )
 
 
-def rec(name, status, source, phone="+6281510032464", address="Jl. Contoh 1", wa=""):
+def rec(name, status, source, phone="+6281510032464", address="Jl. Contoh 1", wa="", cid=None):
     return PlaceRecord(
-        place_cid="0xa:0xb",
+        place_cid=cid or f"0xa:{name}",
         name=name,
         address=address,
         phone_e164=phone,
@@ -90,3 +90,45 @@ def test_returns_written_row_count(tmp_path):
         out,
     )
     assert written == 2
+
+
+def test_write_from_jsonl_rebuilds_the_sheet(tmp_path):
+    """취소된 작업이나 예전 데이터도 JSONL만 있으면 엑셀을 다시 뽑을 수 있어야 한다."""
+    import json
+
+    from sourcing.excel import write_xlsx_from_jsonl
+
+    raw = tmp_path / "run.raw.jsonl"
+    with raw.open("w", encoding="utf-8") as fh:
+        for r in (
+            rec("확정", "confirmed", SOURCE_SITE_LINK),
+            rec("추정", "candidate", SOURCE_MAP_PHONE_GUESS),
+            rec("제외", "unlikely", ""),
+        ):  # place_cid가 서로 달라야 JsonlStore의 중복 제거에 걸리지 않는다
+            fh.write(json.dumps(r.__dict__, ensure_ascii=False) + "\n")
+
+    out = tmp_path / "run.xlsx"
+    assert write_xlsx_from_jsonl(raw, out) == 2
+    names = [row[0].value for row in sheet(out).iter_rows(min_row=2)]
+    assert names == ["확정", "추정"]
+
+
+def test_write_from_jsonl_dedupes_like_the_store(tmp_path):
+    import json
+
+    from sourcing.excel import write_xlsx_from_jsonl
+
+    raw = tmp_path / "run.raw.jsonl"
+    duplicate = rec("A", "confirmed", SOURCE_SITE_LINK, cid="0xa:0xb")
+    with raw.open("w", encoding="utf-8") as fh:
+        fh.write(json.dumps(duplicate.__dict__, ensure_ascii=False) + "\n")
+        fh.write(json.dumps(duplicate.__dict__, ensure_ascii=False) + "\n")
+    assert write_xlsx_from_jsonl(raw, tmp_path / "run.xlsx") == 1
+
+
+def test_write_from_jsonl_on_missing_file_is_zero(tmp_path):
+    from sourcing.excel import write_xlsx_from_jsonl
+
+    out = tmp_path / "run.xlsx"
+    assert write_xlsx_from_jsonl(tmp_path / "nope.jsonl", out) == 0
+    assert [c.value for c in sheet(out)[1]] == EXCEL_HEADERS
