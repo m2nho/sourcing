@@ -30,6 +30,3 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# installer/ 는 패키지(src/sourcing) 밖에 있다. 단일 exe로 배포되며 이 프로젝트를
-# 임포트하지 않아야 하므로 일부러 분리해 뒀고, 테스트만 루트를 경로에 넣어 찾는다.
-pythonpath = ["."]
