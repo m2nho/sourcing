@@ -40,34 +40,51 @@ function Have([string]$Name) {
     return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
 }
 
-function Run([string]$Exe, [string[]]$Args, [string]$WorkDir = $null) {
-    $out = if ($WorkDir) { & $Exe @Args 2>&1 } else { & $Exe @Args 2>&1 }
+function Run([string]$Exe, [string[]]$Arguments) {
+    # 파라미터를 $Args로 두면 안 된다. PowerShell의 자동 변수와 겹쳐서
+    # @Args가 내 인자가 아니라 빈 자동 변수를 펼친다 - 명령이 인자 없이
+    # 실행되고 도움말만 뱉는다.
+    # uv 같은 도구는 진행 상황을 stderr로 쓴다. ErrorActionPreference가
+    # Stop이면 그 출력만으로 던져버리므로, 이 안에서는 종료 코드로만 판단한다.
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $out = & $Exe @Arguments 2>&1
+    } finally {
+        $ErrorActionPreference = $previous
+    }
     if ($LASTEXITCODE -ne 0) {
         $tail = ($out | Select-Object -Last 6) -join "`n"
         throw $tail
     }
-    return $out
+    # 출력을 돌려주지 않는다. 호출부가 받지 않으면 파이프라인으로 흘러
+    # 그대로 화면에 찍히는데, uv의 stderr 진행 메시지가 빨간 오류처럼 보여
+    # 설치가 실패한 줄 알게 된다.
 }
 
 # ── 1. Codex 확인 ────────────────────────────────────────────────
+# 2026년 7월부터 ChatGPT 데스크탑 앱이 Codex를 품었고, 앱·CLI·IDE 확장이
+# 같은 ~/.codex/config.toml 을 공유한다. 그래서 codex CLI가 없어도 앱만으로
+# 쓸 수 있다. 확인이 틀릴 수 있는 검사로 설치를 막지 않는다 - 감지해서
+# 알려주되, 설정은 어느 쪽이든 같은 파일에 쓰면 되므로 계속 진행한다.
 function Ensure-Codex {
-    if (Have "codex") { Ok "Codex가 설치되어 있습니다."; return }
-    Fail @"
-Codex가 설치되어 있지 않습니다.
-
-  이 설치 프로그램은 Codex에 기능을 연결해 주는 역할만 합니다.
-  Codex를 먼저 설치해 주세요:
-
-    1) https://nodejs.org 에서 Node.js를 설치합니다 (초록색 LTS 버튼)
-    2) 설치가 끝나면 컴퓨터를 다시 시작합니다
-    3) 시작 메뉴에서 'PowerShell'을 찾아 열고, 아래를 붙여넣고 엔터:
-
-         npm install -g @openai/codex
-
-    4) 이어서 'codex' 를 입력해 로그인까지 마칩니다
-
-  그 다음 이 설치 프로그램을 다시 실행해 주세요.
-"@
+    if (Have "codex") {
+        Ok "Codex CLI를 찾았습니다."
+        return
+    }
+    if (Test-Path (Split-Path $CodexConfig -Parent)) {
+        Ok "Codex 설정 폴더를 찾았습니다. (ChatGPT 앱 또는 IDE 확장)"
+        return
+    }
+    Info "Codex를 찾지 못했습니다. 설치는 계속합니다."
+    Info ""
+    Info "  ChatGPT 데스크탑 앱을 쓰신다면 그대로 두시면 됩니다."
+    Info "  설정이 같은 파일을 쓰므로, 설치가 끝나면 앱에서 바로 잡힙니다."
+    Info ""
+    Info "  아직 아무것도 없다면 둘 중 하나를 설치해 주세요:"
+    Info "    - ChatGPT 데스크탑 앱  (쉬움, 권장)"
+    Info "    - Codex CLI            (Node.js 설치 후 npm install -g @openai/codex)"
+    $script:CodexMissing = $true
 }
 
 # ── 2. uv 준비 ───────────────────────────────────────────────────
@@ -160,7 +177,7 @@ function Warm-Up {
     Push-Location $InstallDir
     try {
         Run "uv" @("run", "sourcing", "klinik", "--region", "ID", "--lang", "id",
-                   "--limit", "2", "--headful", "--out", "out/설치확인.csv") | Out-Null
+                   "--limit", "2", "--headful", "--out", "out/설치확인.csv")
         Ok "접속 확인 완료."
     } catch {
         Info "! 첫 접속을 마치지 못했습니다. 설치는 계속됩니다."
@@ -173,7 +190,7 @@ function Warm-Up {
 function Verify {
     Push-Location $InstallDir
     try {
-        Run "uv" @("run", "sourcing", "--help") | Out-Null
+        Run "uv" @("run", "sourcing", "--help")
         Ok "정상 동작을 확인했습니다."
     } catch {
         Pop-Location
@@ -202,7 +219,15 @@ Write-Host ("=" * 58) -ForegroundColor Green
 Write-Host "  설치가 끝났습니다" -ForegroundColor Green
 Write-Host ("=" * 58) -ForegroundColor Green
 Say ""
-Say "이제 Codex를 열고 이렇게 말해 보세요:"
+if ($script:CodexMissing) {
+    Say "! Codex를 찾지 못했지만 설정은 저장해 뒀습니다."
+    Say "  ChatGPT 데스크탑 앱이나 Codex를 설치하면 자동으로 잡힙니다."
+    Say ""
+}
+Say "ChatGPT 앱이나 Codex가 이미 열려 있으면 한 번 껐다 켜 주세요."
+Say "설정을 다시 읽어야 새 기능이 보입니다."
+Say ""
+Say "그다음 이렇게 말해 보세요:"
 Say ""
 Say '  "자카르타 클리닉 WhatsApp 연락처 수집해줘"'
 Say '  "지금까지 결과 엑셀로 뽑아줘"'
