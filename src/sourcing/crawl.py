@@ -15,6 +15,8 @@ import html as html_module
 import re
 from dataclasses import replace
 
+import phonenumbers
+
 from sourcing.phone import CONFIRMED, normalize, wa_number_from_url, wa_link
 from sourcing.store import (
     SOURCE_SITE_CONFIRMS_MAP,
@@ -43,6 +45,10 @@ def wa_numbers_from_html(html: str, region: str = "") -> list[str]:
     두 가지 선언 형태를 읽는다.
 
     1. wa.me / api.whatsapp.com 링크 — 가장 명확하다. 먼저 나온다.
+    region을 주면 그 나라 번호만 남긴다. 다국적 체인은 사이트에 전 지점
+    번호를 깔아두기 때문에(실측: 런던 Sisu Clinic에 캐나다·미국 번호),
+    수집 지역과 다른 나라 번호는 다른 지점의 것으로 본다.
+
     2. tel: 링크에 WhatsApp 라벨이 붙은 것 — 실측(런던 Dr Hala)에서 나왔다.
        업체가 링크는 tel:로 걸고 옆에 "WhatsApp"이라고 적어두는 형태다.
        국내 표기(07...)일 수 있어 region이 있어야 읽는다. 없으면 조용히
@@ -59,7 +65,7 @@ def wa_numbers_from_html(html: str, region: str = "") -> list[str]:
 
     for match in WA_URL_PATTERN.findall(text):
         number = wa_number_from_url(_normalize_url(match))
-        if number and number not in seen:
+        if number and number not in seen and _belongs_to(number, region):
             seen.add(number)
             numbers.append(number)
 
@@ -120,6 +126,17 @@ def _whatsapp_labelled_tel_numbers(text: str, region: str) -> list[str]:
         if e164:
             found.append(e164)
     return found
+
+
+def _belongs_to(e164: str, region: str) -> bool:
+    """이 번호가 수집 지역의 것인가. region이 없으면 걸러내지 않는다."""
+    if not region:
+        return True
+    try:
+        parsed = phonenumbers.parse(e164, None)
+    except phonenumbers.NumberParseException:
+        return False
+    return phonenumbers.region_code_for_number(parsed) == region.upper()
 
 
 def _labelled_whatsapp(text: str, link_start: int, anchor: str) -> bool:

@@ -159,3 +159,32 @@ def test_wa_me_links_still_come_first():
 
 def test_invalid_tel_number_is_rejected():
     assert wa_numbers_from_html('<a href="tel:+441234">WhatsApp</a>', region="GB") == []
+
+
+# ── 다국적 체인의 타 지점 번호 걸러내기 ─────────────────────────────
+# 실측(런던 Sisu Clinic Mayfair): 사이트에 전 지점 번호가 깔려 있어
+# 메이페어 지점에 캐나다(+1 249)·미국 번호가 붙었다. 마이애미 수집에서도
+# 같은 번호가 나왔다. 수집 지역과 다른 나라 번호는 다른 지점의 것이다.
+
+
+def test_foreign_numbers_are_rejected_when_a_region_is_given():
+    html = (
+        '<a href="https://wa.me/12497018842">Canada</a>'
+        '<a href="https://wa.me/447496873334">London</a>'
+    )
+    assert wa_numbers_from_html(html, region="GB") == ["+447496873334"]
+
+
+def test_every_number_foreign_means_no_number():
+    html = '<a href="https://wa.me/12497018842">Chat</a>'
+    assert wa_numbers_from_html(html, region="GB") == []
+
+
+def test_without_a_region_nothing_is_filtered_by_country():
+    html = '<a href="https://wa.me/12497018842">Chat</a>'
+    assert wa_numbers_from_html(html) == ["+12497018842"]
+
+
+def test_indonesian_numbers_survive_an_indonesian_run():
+    html = '<a href="https://wa.me/6281100000001">Chat</a>'
+    assert wa_numbers_from_html(html, region="ID") == ["+6281100000001"]
