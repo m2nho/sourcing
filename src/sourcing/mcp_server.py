@@ -78,6 +78,7 @@ def start_collection(
     limit: int = 0,
     lang: str = "en",
     crawl: bool = True,
+    verify: bool = True,
 ) -> dict:
     """구글 맵에서 병원·클리닉을 수집하고 WhatsApp 연락처를 찾는 작업을 시작한다.
 
@@ -95,6 +96,14 @@ def start_collection(
         lang: 구글 맵 UI 언어.
         crawl: 웹사이트를 훑어 WhatsApp 링크를 찾을지. 끄면 훨씬 빠르지만
             confirmed가 거의 나오지 않는다 (실측 0.5% 대 47%).
+        verify: 번호를 wa.me에서 조회해 WhatsApp 프로필을 확인할지. 끄면
+            추측(candidate)과 확인된 것을 구분할 수 없다. 실측상 candidate의
+            절반만 실제로 등록돼 있었다. 건당 3초.
+
+    결과 등급 (엑셀에서 색으로 구분된다):
+        confirmed  업체가 사이트에 wa.me를 선언 — 초록
+        verified   선언은 없지만 프로필 조회로 확인 — 파랑
+        candidate  모바일 번호 추측, 미확인 — 노랑
     """
     running = _running_job()
     if running is not None:
@@ -122,6 +131,8 @@ def start_collection(
         command += ["--limit", str(limit)]
     if not crawl:
         command.append("--no-crawl")
+    if not verify:
+        command.append("--no-verify")
 
     log_file = log_path.open("w", encoding="utf-8")
     process = subprocess.Popen(
