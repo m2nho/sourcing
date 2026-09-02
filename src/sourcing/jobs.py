@@ -18,10 +18,11 @@ from pathlib import Path
 
 STATUSES = ("confirmed", "candidate", "unlikely")
 
-#: 툴이 돌려줄 컬럼. 레코드 전체를 반환하면 컨텍스트만 태운다 —
-#: 영업 담당자가 실제로 쓰는 값만 남긴다.
+#: 툴이 돌려줄 컬럼. 이건 모델이 읽는 응답이라 무게가 곧 비용이다.
+#: maps_url은 한 건에 300자가 넘는데 모델이 쓸 일이 없고, place_cid는
+#: 내부 식별자다. 둘 다 빼면 같은 정보를 훨씬 적은 토큰으로 전달한다.
+#: 두 값이 필요하면 엑셀에 컬럼으로 들어 있다.
 LEAD_COLUMNS = (
-    "place_cid",
     "name",
     "phone_e164",
     "whatsapp_status",
@@ -29,7 +30,6 @@ LEAD_COLUMNS = (
     "wa_link",
     "website",
     "address",
-    "maps_url",
 )
 
 

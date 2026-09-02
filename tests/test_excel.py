@@ -9,7 +9,8 @@ from sourcing.store import (
 )
 
 
-def rec(name, status, source, phone="+6281100000001", address="Jl. Contoh 1", wa="", cid=None):
+def rec(name, status, source, phone="+6281100000001", address="Jl. Contoh 1", wa="",
+        cid=None, website="", maps_url=""):
     return PlaceRecord(
         place_cid=cid or f"0xa:{name}",
         name=name,
@@ -18,6 +19,8 @@ def rec(name, status, source, phone="+6281100000001", address="Jl. Contoh 1", wa
         whatsapp_status=status,
         source=source,
         wa_link=wa,
+        website=website,
+        maps_url=maps_url,
     )
 
 
@@ -30,7 +33,9 @@ def test_headers_are_the_slim_set(tmp_path):
     write_xlsx([rec("Klinik A", "confirmed", SOURCE_SITE_LINK)], out)
     header = [c.value for c in sheet(out)[1]]
     assert header == EXCEL_HEADERS
-    assert header == ["병원명", "위치", "전화번호", "WhatsApp 링크", "상태", "근거"]
+    assert header == [
+        "병원명", "위치", "전화번호", "WhatsApp 링크", "상태", "근거", "홈페이지", "구글맵",
+    ]
 
 
 def test_source_is_written_as_a_human_label(tmp_path):
@@ -45,6 +50,28 @@ def test_source_is_written_as_a_human_label(tmp_path):
     )
     labels = [row[5].value for row in sheet(out).iter_rows(min_row=2)]
     assert labels == ["홈페이지+맵 일치", "홈페이지 링크", "맵 번호 추정"]
+
+
+def test_rows_carry_both_links(tmp_path):
+    out = tmp_path / "leads.xlsx"
+    write_xlsx(
+        [rec("A", "confirmed", SOURCE_SITE_LINK,
+             website="https://klinik.co.id/", maps_url="https://maps.google.com/x")],
+        out,
+    )
+    row = [c.value for c in sheet(out)[2]]
+    assert row[6] == "https://klinik.co.id/"
+    assert row[7] == "https://maps.google.com/x"
+
+
+def test_missing_links_leave_the_cell_empty(tmp_path):
+    # openpyxl은 빈 문자열을 빈 셀로 저장하고 None으로 읽는다. 사용자에게는
+    # 빈 칸으로 보이므로 정상이다 - 'None' 같은 글자가 새지 않는 것이 요건이다.
+    out = tmp_path / "leads.xlsx"
+    write_xlsx([rec("A", "confirmed", SOURCE_SITE_LINK)], out)
+    row = [c.value for c in sheet(out)[2]]
+    assert not row[6]
+    assert not row[7]
 
 
 def test_rows_carry_name_and_location(tmp_path):

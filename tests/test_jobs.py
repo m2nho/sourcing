@@ -49,11 +49,20 @@ def test_tally_ignores_corrupt_lines(tmp_path):
     assert tally(path)["total"] == 1
 
 
+def test_read_leads_omits_bulky_fields(tmp_path):
+    path = tmp_path / "raw.jsonl"
+    write_jsonl(path, [rec("1", "confirmed")])
+    [row] = read_leads(path, status=None, limit=1)
+    assert "maps_url" not in row
+    assert "place_cid" not in row
+
+
 def test_read_leads_filters_by_status(tmp_path):
     path = tmp_path / "raw.jsonl"
-    write_jsonl(path, [rec("1", "confirmed"), rec("2", "candidate"), rec("3", "confirmed")])
+    write_jsonl(path, [rec("1", "confirmed", name="A"), rec("2", "candidate", name="B"),
+                       rec("3", "confirmed", name="C")])
     got = read_leads(path, status="confirmed", limit=10)
-    assert [r["place_cid"] for r in got] == ["1", "3"]
+    assert [r["name"] for r in got] == ["A", "C"]
 
 
 def test_read_leads_caps_at_limit(tmp_path):
@@ -66,8 +75,9 @@ def test_read_leads_returns_only_useful_columns(tmp_path):
     path = tmp_path / "raw.jsonl"
     write_jsonl(path, [rec("1", "confirmed", wa="https://wa.me/6281234567890")])
     [row] = read_leads(path, status=None, limit=1)
+    # 모델이 읽을 응답이다. maps_url은 300자가 넘는데 모델이 쓸 일이 없어
+    # 토큰만 태운다. place_cid도 내부 식별자라 뺀다. 둘 다 엑셀에는 있다.
     assert set(row) == {
-        "place_cid",
         "name",
         "phone_e164",
         "whatsapp_status",
@@ -75,7 +85,6 @@ def test_read_leads_returns_only_useful_columns(tmp_path):
         "wa_link",
         "website",
         "address",
-        "maps_url",
     }
 
 
