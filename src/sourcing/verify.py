@@ -14,7 +14,7 @@ import re
 from dataclasses import replace
 
 from sourcing.phone import CONFIRMED, VERIFIED, wa_link
-from sourcing.store import SOURCE_PROFILE, PlaceRecord
+from sourcing.store import SOURCE_PROFILE, SOURCE_PROFILE_MISMATCH, PlaceRecord
 
 #: 프로필 이름이 병원명과 같은 곳인지 보는 기준. 실측(런던 4건)에서 맞는
 #: 짝은 0.67 이상, 무관한 짝은 훨씬 아래였다.
@@ -58,7 +58,17 @@ def apply_profile(record: PlaceRecord, profile_name: str) -> PlaceRecord:
         return replace(record, profile_name="")
 
     if not profile_matches(record.name, profile_name):
-        return replace(record, profile_name=profile_name)
+        # 번호가 WhatsApp에 있다는 것은 확인된 사실이므로 링크는 준다.
+        # 다만 그 번호가 이 병원 것인지는 확인되지 않았으니 등급은 올리지
+        # 않고, 왜 그런지 근거에 남겨 사람이 판단하게 한다.
+        if record.whatsapp_status == CONFIRMED:
+            return replace(record, profile_name=profile_name)
+        return replace(
+            record,
+            source=SOURCE_PROFILE_MISMATCH,
+            wa_link=wa_link(record.phone_e164),
+            profile_name=profile_name,
+        )
 
     if record.whatsapp_status == CONFIRMED:
         return replace(record, profile_name=profile_name)

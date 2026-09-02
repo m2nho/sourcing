@@ -98,3 +98,33 @@ def test_apply_profile_does_not_mutate_the_input():
 def test_record_without_a_number_is_untouched():
     empty = PlaceRecord(place_cid="0xa:0xb", name="X", phone_e164="")
     assert apply_profile(empty, "Anything") == empty
+
+
+# ── 프로필은 있는데 이름이 상호와 다른 경우 ──────────────────────────
+# 실측(런던 Dr. Bennett Aesthetics Clinics → "Isabella"): 원장 개인 이름을
+# 프로필로 쓰는 곳이 있다. 번호가 WhatsApp에 있다는 것은 확인된 사실이므로
+# 링크를 준다. 다만 그 번호가 이 병원 것인지는 확인되지 않았으므로 등급을
+# 올리지 않고, 왜 그런지 근거에 밝힌다.
+
+
+def test_mismatched_profile_still_gets_a_link():
+    from sourcing.store import SOURCE_PROFILE_MISMATCH
+
+    out = apply_profile(base(), "Isabella")
+    assert out.whatsapp_status == "candidate"
+    assert out.wa_link == "https://wa.me/442081645799"
+    assert out.source == SOURCE_PROFILE_MISMATCH
+    assert out.profile_name == "Isabella"
+
+
+def test_candidate_without_any_profile_has_no_link():
+    # 조회해도 이름이 안 뜬 번호는 여전히 추측이다. 링크로 포장하지 않는다.
+    out = apply_profile(base(), "")
+    assert out.wa_link == ""
+    assert out.source == SOURCE_MAP_PHONE_GUESS
+
+
+def test_mismatch_does_not_downgrade_a_confirmed_record():
+    out = apply_profile(base(status="confirmed", source=SOURCE_SITE_LINK), "Isabella")
+    assert out.whatsapp_status == "confirmed"
+    assert out.source == SOURCE_SITE_LINK

@@ -16,6 +16,7 @@ SOURCE_SITE_LINK = "site_link"                  # 홈페이지에서 찾았고 �
 SOURCE_SITE_CONFIRMS_MAP = "site_confirms_map"  # 홈페이지가 맵 대표번호를 확인해줬다
 SOURCE_MAP_PHONE_GUESS = "map_phone_guess"      # 맵 대표번호가 모바일이라는 추정뿐
 SOURCE_PROFILE = "profile"                      # WhatsApp 프로필 조회로 확인
+SOURCE_PROFILE_MISMATCH = "profile_mismatch"    # 프로필은 있으나 이름이 상호와 다름
 SOURCE_NONE = ""                                # 근거 없음
 
 #: 사람이 읽는 라벨. 엑셀에 이 문구가 그대로 들어간다.
@@ -25,6 +26,7 @@ SOURCE_LABELS = {
     SOURCE_SITE_CONFIRMS_MAP: "홈페이지+맵 일치",
     SOURCE_MAP_PHONE_GUESS: "맵 번호 추정",
     SOURCE_PROFILE: "프로필 확인",
+    SOURCE_PROFILE_MISMATCH: "프로필 이름 불일치",
     SOURCE_NONE: "근거 없음",
 }
 
