@@ -18,7 +18,17 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from sourcing.store import SOURCE_LABELS, JsonlStore, PlaceRecord
+from sourcing.store import (
+    SOURCE_MAP_LINK,
+    SOURCE_MAP_PHONE_GUESS,
+    SOURCE_PROFILE,
+    SOURCE_PROFILE_MISMATCH,
+    SOURCE_SITE_CONFIRMS_MAP,
+    SOURCE_SITE_LINK,
+    SOURCE_LABELS,
+    JsonlStore,
+    PlaceRecord,
+)
 
 EXCEL_HEADERS = [
     "병원명", "위치", "전화번호", "WhatsApp 링크", "상태", "근거",
@@ -43,6 +53,58 @@ _STATUS_FILLS = {
     "verified": PatternFill("solid", fgColor="BDD7EE"),   # 파랑 - 프로필 확인
     "candidate": PatternFill("solid", fgColor="FFE699"),  # 노랑 - 미확인 추측
 }
+
+
+LEGEND_SHEET = "범례"
+
+#: 등급 설명. 영업 담당자가 어디부터 걸지 정하는 근거다.
+_GRADE_NOTES = [
+    ("확정", "confirmed", "업체가 자기 사이트에 wa.me 링크를 걸어뒀다", "표본 20건 중 16건 프로필 확인 (80%)"),
+    ("검증", "verified", "선언은 없지만 번호를 조회하니 WhatsApp 프로필 이름이 상호와 일치했다", "정의상 등록 확인됨"),
+    ("추정", "candidate", "맵 대표번호가 모바일이라는 것 외에 근거가 없다", "표본 15건 중 8건 (53%)"),
+]
+
+#: 근거 설명. 같은 등급 안에서도 신뢰도가 갈린다.
+_SOURCE_NOTES = [
+    (SOURCE_SITE_CONFIRMS_MAP, "홈페이지의 wa.me 번호가 구글맵 대표번호와 같다. 두 출처가 서로를 확인한 것으로 가장 강하다"),
+    (SOURCE_SITE_LINK, "홈페이지에서 찾은 선언(wa.me 링크 또는 WhatsApp이라 표시된 tel: 링크). 맵에는 없던 번호다"),
+    (SOURCE_MAP_LINK, "구글맵의 웹사이트 칸 자체가 wa.me 링크였다. 드물다"),
+    (SOURCE_PROFILE, "번호를 wa.me에서 조회하니 프로필 이름이 상호와 일치했다"),
+    (SOURCE_PROFILE_MISMATCH, "번호는 WhatsApp에 있지만 프로필 이름이 상호와 다르다. 원장 개인 이름일 수 있으니 링크를 눌러 확인하라"),
+    (SOURCE_MAP_PHONE_GUESS, "구글맵 대표번호가 모바일 번호대다. 실제 등록 여부는 확인되지 않았다"),
+]
+
+_NOTE_HEADER = Font(bold=True, color="FFFFFF")
+
+
+def _write_legend(workbook) -> None:
+    """상태와 근거의 뜻을 적은 시트. 엑셀만 받은 사람도 읽고 판단할 수 있게 한다."""
+    sheet = workbook.create_sheet(LEGEND_SHEET)
+
+    sheet.append(["상태", "뜻", "실측 정확도"])
+    for cell in sheet[1]:
+        cell.font = _NOTE_HEADER
+        cell.fill = _HEADER_FILL
+    for label, status, meaning, accuracy in _GRADE_NOTES:
+        sheet.append([label, meaning, accuracy])
+        sheet.cell(sheet.max_row, 1).fill = _STATUS_FILLS[status]
+
+    sheet.append([])
+    sheet.append(["근거", "뜻", ""])
+    for cell in sheet[sheet.max_row]:
+        cell.font = _NOTE_HEADER
+        cell.fill = _HEADER_FILL
+    for source, meaning in _SOURCE_NOTES:
+        sheet.append([SOURCE_LABELS[source], meaning, ""])
+
+    sheet.append([])
+    sheet.append(["참고", "모든 행에 클릭 가능한 wa.me 링크가 있다. 신뢰도 차이는 상태 색과 근거로 표시한다", ""])
+    sheet.append(["", "연락이 불가능한 곳(번호 없음·미등록 유선)은 이 파일에 넣지 않는다. 전체는 CSV에 있다", ""])
+
+    for column, width in (("A", 20), ("B", 86), ("C", 30)):
+        sheet.column_dimensions[column].width = width
+    for row in sheet.iter_rows():
+        row[1].alignment = Alignment(wrap_text=True, vertical="top")
 
 
 def _status_of(label: str | None) -> str:
@@ -98,6 +160,9 @@ def write_xlsx(records: Iterable[PlaceRecord], path: Path) -> int:
 
     sheet.freeze_panes = "A2"
     sheet.auto_filter.ref = f"A1:{get_column_letter(len(EXCEL_HEADERS))}{sheet.max_row}"
+
+    _write_legend(workbook)
+    workbook.active = 0  # 열었을 때 리드 시트가 먼저 보이게
     workbook.save(path)
     return len(rows)
 

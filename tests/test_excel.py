@@ -193,3 +193,41 @@ def test_every_row_carries_a_clickable_link(tmp_path):
     )
     links = [row[3].value for row in sheet(out).iter_rows(min_row=2)]
     assert all(l and l.startswith("https://wa.me/") for l in links)
+
+
+def test_workbook_carries_a_legend_sheet(tmp_path):
+    """엑셀만 받은 사람이 상태와 근거의 뜻을 물어보지 않아도 알 수 있어야 한다."""
+    from sourcing.excel import LEGEND_SHEET
+    from sourcing.store import SOURCE_LABELS
+
+    out = tmp_path / "leads.xlsx"
+    write_xlsx([rec("A", "confirmed", SOURCE_SITE_LINK)], out)
+    book = load_workbook(out)
+    assert LEGEND_SHEET in book.sheetnames
+
+    text = "\n".join(
+        str(c.value) for row in book[LEGEND_SHEET].iter_rows() for c in row if c.value
+    )
+    for label in SOURCE_LABELS.values():
+        if label != "근거 없음":  # unlikely는 엑셀에 나오지 않는다
+            assert label in text, f"근거 '{label}' 설명이 범례에 없다"
+    for grade in ("확정", "검증", "추정"):
+        assert grade in text
+
+
+def test_legend_explains_the_colours(tmp_path):
+    from sourcing.excel import LEGEND_SHEET, _STATUS_FILLS
+
+    out = tmp_path / "leads.xlsx"
+    write_xlsx([rec("A", "confirmed", SOURCE_SITE_LINK)], out)
+    ws = load_workbook(out)[LEGEND_SHEET]
+    used = {c.fill.start_color.rgb for row in ws.iter_rows() for c in row}
+    for fill in _STATUS_FILLS.values():
+        assert f"00{fill.start_color.rgb[-6:]}" in used or fill.start_color.rgb in used
+
+
+def test_data_sheet_is_the_first_one(tmp_path):
+    out = tmp_path / "leads.xlsx"
+    write_xlsx([rec("A", "confirmed", SOURCE_SITE_LINK)], out)
+    book = load_workbook(out)
+    assert book.sheetnames[0] == "리드"
