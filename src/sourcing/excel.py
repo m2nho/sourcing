@@ -57,11 +57,12 @@ _STATUS_FILLS = {
 
 LEGEND_SHEET = "범례"
 
-#: 등급 설명. 영업 담당자가 어디부터 걸지 정하는 근거다.
+#: 등급이 무엇을 뜻하는지. 측정 결과가 아니라 정의만 적는다 - 수치는
+#: 실행마다 달라지지만 정의는 그대로다.
 _GRADE_NOTES = [
-    ("확정", "confirmed", "업체가 자기 사이트에 wa.me 링크를 걸어뒀다", "표본 20건 중 16건 프로필 확인 (80%)"),
-    ("검증", "verified", "선언은 없지만 번호를 조회하니 WhatsApp 프로필 이름이 상호와 일치했다", "정의상 등록 확인됨"),
-    ("추정", "candidate", "맵 대표번호가 모바일이라는 것 외에 근거가 없다", "표본 15건 중 8건 (53%)"),
+    ("확정", "confirmed", "업체가 자기 웹사이트에 WhatsApp 링크를 공개해 둔 번호다"),
+    ("검증", "verified", "웹사이트에 공개돼 있진 않지만, 번호를 조회하니 WhatsApp 프로필 이름이 상호와 일치하는 번호다"),
+    ("추정", "candidate", "구글맵 대표번호가 모바일 번호대라 WhatsApp일 가능성이 있는 번호다. 확인되지는 않았다"),
 ]
 
 #: 근거 설명. 같은 등급 안에서도 신뢰도가 갈린다.
@@ -81,27 +82,27 @@ def _write_legend(workbook) -> None:
     """상태와 근거의 뜻을 적은 시트. 엑셀만 받은 사람도 읽고 판단할 수 있게 한다."""
     sheet = workbook.create_sheet(LEGEND_SHEET)
 
-    sheet.append(["상태", "뜻", "실측 정확도"])
+    sheet.append(["상태", "뜻"])
     for cell in sheet[1]:
         cell.font = _NOTE_HEADER
         cell.fill = _HEADER_FILL
-    for label, status, meaning, accuracy in _GRADE_NOTES:
-        sheet.append([label, meaning, accuracy])
+    for label, status, meaning in _GRADE_NOTES:
+        sheet.append([label, meaning])
         sheet.cell(sheet.max_row, 1).fill = _STATUS_FILLS[status]
 
     sheet.append([])
-    sheet.append(["근거", "뜻", ""])
+    sheet.append(["근거", "뜻"])
     for cell in sheet[sheet.max_row]:
         cell.font = _NOTE_HEADER
         cell.fill = _HEADER_FILL
     for source, meaning in _SOURCE_NOTES:
-        sheet.append([SOURCE_LABELS[source], meaning, ""])
+        sheet.append([SOURCE_LABELS[source], meaning])
 
     sheet.append([])
-    sheet.append(["참고", "모든 행에 클릭 가능한 wa.me 링크가 있다. 신뢰도 차이는 상태 색과 근거로 표시한다", ""])
-    sheet.append(["", "연락이 불가능한 곳(번호 없음·미등록 유선)은 이 파일에 넣지 않는다. 전체는 CSV에 있다", ""])
+    sheet.append(["참고", "모든 행에 클릭 가능한 wa.me 링크가 있다. 신뢰도 차이는 상태 색과 근거로 표시한다"])
+    sheet.append(["", "연락이 불가능한 곳(번호 없음·미등록 유선)은 이 파일에 넣지 않는다. 전체는 CSV에 있다"])
 
-    for column, width in (("A", 20), ("B", 86), ("C", 30)):
+    for column, width in (("A", 20), ("B", 96)):
         sheet.column_dimensions[column].width = width
     for row in sheet.iter_rows():
         row[1].alignment = Alignment(wrap_text=True, vertical="top")
