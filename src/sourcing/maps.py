@@ -25,6 +25,10 @@ SITE_LOAD_TIMEOUT_MS = 20_000
 #: 경우가 흔해서 domcontentloaded 직후에는 아직 없다.
 SITE_SETTLE_MS = 2_000
 
+#: wa.me 프로필 조회. 페이지가 가벼워 짧게 잡는다.
+WA_TIMEOUT_MS = 25_000
+WA_SETTLE_MS = 2_000
+
 #: 스크롤 높이가 이만큼 연속으로 그대로면 목록 끝으로 본다.
 STAGNANT_LIMIT = 3
 
@@ -127,3 +131,28 @@ def fetch_site_html(page: Page, url: str) -> str:
     page.goto(url, wait_until="domcontentloaded", timeout=SITE_LOAD_TIMEOUT_MS)
     page.wait_for_timeout(SITE_SETTLE_MS)
     return page.content()
+
+
+#: wa.me 페이지 상단의 고정 메뉴. 프로필 이름을 읽을 때 걷어낸다.
+WA_CHROME = "Features Privacy Blog Apps Help Center For Business Log In Download"
+
+
+def fetch_wa_profile(page: Page, e164: str) -> str:
+    """wa.me에서 이 번호의 WhatsApp 프로필 이름을 읽는다. 없으면 "".
+
+    등록된 비즈니스 계정이면 상호가 보이고, 미등록이거나 개인 계정이면
+    "Chat on WhatsApp with <번호>"만 보인다. 메시지는 보내지 않는다 -
+    공개 페이지를 여는 것뿐이다.
+    """
+    page.goto(
+        f"https://wa.me/{e164.lstrip('+')}", wait_until="networkidle", timeout=WA_TIMEOUT_MS
+    )
+    page.wait_for_timeout(WA_SETTLE_MS)
+    body = page.evaluate("document.body.innerText") or ""
+    text = " ".join(body.split())
+    if text.startswith(WA_CHROME):
+        text = text[len(WA_CHROME) :].strip()
+    head = text.split("Open app")[0].strip().lstrip("\u200e")
+    if not head or head.lower().startswith("chat on whatsapp with"):
+        return ""
+    return head

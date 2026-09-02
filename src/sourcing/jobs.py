@@ -16,7 +16,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
-STATUSES = ("confirmed", "candidate", "unlikely")
+STATUSES = ("confirmed", "verified", "candidate", "unlikely")
 
 #: 툴이 돌려줄 컬럼. 이건 모델이 읽는 응답이라 무게가 곧 비용이다.
 #: maps_url은 한 건에 300자가 넘는데 모델이 쓸 일이 없고, place_cid는
@@ -27,6 +27,7 @@ LEAD_COLUMNS = (
     "phone_e164",
     "whatsapp_status",
     "source",
+    "profile_name",
     "wa_link",
     "website",
     "address",

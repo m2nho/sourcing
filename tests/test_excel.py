@@ -34,7 +34,8 @@ def test_headers_are_the_slim_set(tmp_path):
     header = [c.value for c in sheet(out)[1]]
     assert header == EXCEL_HEADERS
     assert header == [
-        "병원명", "위치", "전화번호", "WhatsApp 링크", "상태", "근거", "홈페이지", "구글맵",
+        "병원명", "위치", "전화번호", "WhatsApp 링크", "상태", "근거",
+        "WhatsApp 프로필", "홈페이지", "구글맵",
     ]
 
 
@@ -60,8 +61,8 @@ def test_rows_carry_both_links(tmp_path):
         out,
     )
     row = [c.value for c in sheet(out)[2]]
-    assert row[6] == "https://klinik.co.id/"
-    assert row[7] == "https://maps.google.com/x"
+    assert row[7] == "https://klinik.co.id/"
+    assert row[8] == "https://maps.google.com/x"
 
 
 def test_missing_links_leave_the_cell_empty(tmp_path):
@@ -70,8 +71,8 @@ def test_missing_links_leave_the_cell_empty(tmp_path):
     out = tmp_path / "leads.xlsx"
     write_xlsx([rec("A", "confirmed", SOURCE_SITE_LINK)], out)
     row = [c.value for c in sheet(out)[2]]
-    assert not row[6]
     assert not row[7]
+    assert not row[8]
 
 
 def test_rows_carry_name_and_location(tmp_path):

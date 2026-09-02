@@ -15,6 +15,7 @@ SOURCE_MAP_LINK = "map_link"                    # 구글맵 웹사이트 필드�
 SOURCE_SITE_LINK = "site_link"                  # 홈페이지에서 찾았고 맵에는 없던 번호
 SOURCE_SITE_CONFIRMS_MAP = "site_confirms_map"  # 홈페이지가 맵 대표번호를 확인해줬다
 SOURCE_MAP_PHONE_GUESS = "map_phone_guess"      # 맵 대표번호가 모바일이라는 추정뿐
+SOURCE_PROFILE = "profile"                      # WhatsApp 프로필 조회로 확인
 SOURCE_NONE = ""                                # 근거 없음
 
 #: 사람이 읽는 라벨. 엑셀에 이 문구가 그대로 들어간다.
@@ -23,6 +24,7 @@ SOURCE_LABELS = {
     SOURCE_SITE_LINK: "홈페이지 링크",
     SOURCE_SITE_CONFIRMS_MAP: "홈페이지+맵 일치",
     SOURCE_MAP_PHONE_GUESS: "맵 번호 추정",
+    SOURCE_PROFILE: "프로필 확인",
     SOURCE_NONE: "근거 없음",
 }
 
@@ -40,6 +42,7 @@ class PlaceRecord:
     phone_type: str = "unknown"
     whatsapp_status: str = "unlikely"
     source: str = ""
+    profile_name: str = ""
     wa_link: str = ""
     website: str = ""
     rating: str = ""

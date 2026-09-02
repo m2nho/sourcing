@@ -20,6 +20,7 @@ from sourcing.phone import CONFIRMED, classify
 from sourcing.crawl import branch_records, wa_numbers_from_html
 from sourcing.excel import write_xlsx
 from sourcing.store import JsonlStore, PlaceRecord, export_csv
+from sourcing.verify import apply_profile
 
 EXIT_OK = 0
 EXIT_BLOCKED = 2
@@ -94,6 +95,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="crawl",
         action="store_false",
         help="웹사이트를 훑지 않는다. 맵 정보만 쓰므로 훨씬 빠르지만 confirmed는 거의 안 나온다",
+    )
+    parser.add_argument(
+        "--no-verify",
+        dest="verify",
+        action="store_false",
+        help="WhatsApp 프로필 조회를 건너뛴다. 건당 3초를 아끼지만 추측과 확인을 구분할 수 없다",
     )
     parser.add_argument("--headful", action="store_true", help="브라우저 창을 띄운다")
     parser.add_argument(
@@ -178,6 +185,7 @@ def main(argv: list[str] | None = None) -> int:
 
                     record = build_record(fields, args.region, args.keyword, label)
                     records = _confirm_from_site(site_page, record, args.crawl, args.region)
+                    records = [_verify_profile(site_page, item, args.verify) for item in records]
                     for item in records:
                         store.append(item)
                         seen.add(item.place_cid)
@@ -269,3 +277,21 @@ def _open_site_page(page):
     except Exception as exc:  # noqa: BLE001 - 페이지 하나 못 열었다고 수집을 멈추지 않는다
         print(f"사이트 크롤용 페이지를 열지 못해 맵 정보만 씁니다: {exc}", file=sys.stderr)
         return None
+
+
+def _verify_profile(site_page, record: PlaceRecord, enabled: bool) -> PlaceRecord:
+    """번호가 실제 WhatsApp에 있는지 확인해 등급에 반영한다.
+
+    추측(candidate)과 확인된 것을 구분하기 위한 단계다. 실측에서 모바일
+    추측의 절반만 실제로 등록돼 있었고, 반대로 버려진 유선 중에도 등록된
+    곳이 있었다. 조회 실패는 무시한다 - 확인이 안 됐을 뿐이지 없다는 뜻이
+    아니다.
+    """
+    if not enabled or site_page is None or not record.phone_e164:
+        return record
+    try:
+        name = maps.fetch_wa_profile(site_page, record.phone_e164)
+    except Exception as exc:  # noqa: BLE001 - 조회 실패로 수집을 멈추지 않는다
+        print(f"    ~ 프로필 조회 실패({record.phone_e164}): {exc}", file=sys.stderr)
+        return record
+    return apply_profile(record, name)

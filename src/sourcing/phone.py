@@ -14,6 +14,7 @@ from sourcing.store import (
 )
 
 CONFIRMED = "confirmed"
+VERIFIED = "verified"
 CANDIDATE = "candidate"
 UNLIKELY = "unlikely"
 

@@ -21,18 +21,19 @@ from openpyxl.utils import get_column_letter
 from sourcing.store import SOURCE_LABELS, JsonlStore, PlaceRecord
 
 EXCEL_HEADERS = [
-    "병원명", "위치", "전화번호", "WhatsApp 링크", "상태", "근거", "홈페이지", "구글맵",
+    "병원명", "위치", "전화번호", "WhatsApp 링크", "상태", "근거",
+    "WhatsApp 프로필", "홈페이지", "구글맵",
 ]
 
 #: 연락할 수 없는 곳은 목록에 넣지 않는다. 원본은 CSV에 그대로 남아 있다.
-EXPORTED_STATUSES = ("confirmed", "candidate")
+EXPORTED_STATUSES = ("confirmed", "verified", "candidate")
 
 #: 확정을 먼저 보여준다. 담당자가 위에서부터 걸면 된다.
-_STATUS_ORDER = {"confirmed": 0, "candidate": 1}
+_STATUS_ORDER = {"confirmed": 0, "verified": 1, "candidate": 2}
 
-_STATUS_LABELS = {"confirmed": "확정", "candidate": "추정"}
+_STATUS_LABELS = {"confirmed": "확정", "verified": "검증", "candidate": "추정"}
 
-_COLUMN_WIDTHS = (38, 52, 18, 30, 8, 16, 42, 42)
+_COLUMN_WIDTHS = (38, 52, 18, 30, 8, 16, 32, 42, 42)
 
 _HEADER_FILL = PatternFill("solid", fgColor="1F4E79")
 
@@ -64,6 +65,7 @@ def write_xlsx(records: Iterable[PlaceRecord], path: Path) -> int:
                 record.wa_link,
                 _STATUS_LABELS.get(record.whatsapp_status, record.whatsapp_status),
                 SOURCE_LABELS.get(record.source, record.source),
+                record.profile_name,
                 record.website,
                 record.maps_url,
             ]

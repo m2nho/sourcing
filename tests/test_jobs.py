@@ -34,11 +34,15 @@ def test_job_ids_are_unique_and_readable():
 def test_tally_counts_each_status(tmp_path):
     path = tmp_path / "raw.jsonl"
     write_jsonl(path, [rec("1", "confirmed"), rec("2", "candidate"), rec("3", "unlikely"), rec("4", "confirmed")])
-    assert tally(path) == {"total": 4, "confirmed": 2, "candidate": 1, "unlikely": 1}
+    assert tally(path) == {
+        "total": 4, "confirmed": 2, "verified": 0, "candidate": 1, "unlikely": 1,
+    }
 
 
 def test_tally_of_missing_file_is_all_zero(tmp_path):
-    assert tally(tmp_path / "nope.jsonl") == {"total": 0, "confirmed": 0, "candidate": 0, "unlikely": 0}
+    assert tally(tmp_path / "nope.jsonl") == {
+        "total": 0, "confirmed": 0, "verified": 0, "candidate": 0, "unlikely": 0,
+    }
 
 
 def test_tally_ignores_corrupt_lines(tmp_path):
@@ -82,6 +86,7 @@ def test_read_leads_returns_only_useful_columns(tmp_path):
         "phone_e164",
         "whatsapp_status",
         "source",
+        "profile_name",
         "wa_link",
         "website",
         "address",
