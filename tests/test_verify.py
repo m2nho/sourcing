@@ -117,11 +117,12 @@ def test_mismatched_profile_still_gets_a_link():
     assert out.profile_name == "Isabella"
 
 
-def test_candidate_without_any_profile_has_no_link():
-    # 조회해도 이름이 안 뜬 번호는 여전히 추측이다. 링크로 포장하지 않는다.
+def test_candidate_without_any_profile_keeps_its_link():
+    # 조회해도 이름이 안 뜬 번호는 여전히 추측이지만 링크는 유지한다.
+    # 구분은 상태와 근거로 한다.
     out = apply_profile(base(), "")
-    assert out.wa_link == ""
     assert out.source == SOURCE_MAP_PHONE_GUESS
+    assert out.profile_name == ""
 
 
 def test_mismatch_does_not_downgrade_a_confirmed_record():

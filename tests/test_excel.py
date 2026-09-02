@@ -160,3 +160,36 @@ def test_write_from_jsonl_on_missing_file_is_zero(tmp_path):
     out = tmp_path / "run.xlsx"
     assert write_xlsx_from_jsonl(tmp_path / "nope.jsonl", out) == 0
     assert [c.value for c in sheet(out)[1]] == EXCEL_HEADERS
+
+
+def test_each_grade_gets_its_own_colour(tmp_path):
+    """링크는 모두에게 주므로, 신뢰도 차이는 색으로 한눈에 보여야 한다."""
+    from sourcing.store import SOURCE_PROFILE
+
+    out = tmp_path / "leads.xlsx"
+    write_xlsx(
+        [
+            rec("확정", "confirmed", SOURCE_SITE_LINK),
+            rec("검증", "verified", SOURCE_PROFILE),
+            rec("추정", "candidate", SOURCE_MAP_PHONE_GUESS),
+        ],
+        out,
+    )
+    ws = sheet(out)
+    colours = {row[4].value: row[4].fill.start_color.rgb for row in ws.iter_rows(min_row=2)}
+    assert len({c for c in colours.values()}) == 3, "세 등급의 색이 서로 달라야 한다"
+
+
+def test_every_row_carries_a_clickable_link(tmp_path):
+    from sourcing.store import SOURCE_PROFILE
+
+    out = tmp_path / "leads.xlsx"
+    write_xlsx(
+        [
+            rec("확정", "confirmed", SOURCE_SITE_LINK, wa="https://wa.me/6281100000001"),
+            rec("추정", "candidate", SOURCE_MAP_PHONE_GUESS, wa="https://wa.me/6281100000002"),
+        ],
+        out,
+    )
+    links = [row[3].value for row in sheet(out).iter_rows(min_row=2)]
+    assert all(l and l.startswith("https://wa.me/") for l in links)

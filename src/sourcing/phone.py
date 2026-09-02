@@ -139,9 +139,9 @@ def classify(raw_phone: str, website: str, region: str) -> PhoneVerdict:
 
     e164, ntype = normalize(raw_phone, region)
     if e164 and _looks_reachable(e164, ntype):
-        # candidate는 추측이므로 wa_link를 채우지 않는다. 링크를 붙이면
-        # 클릭 가능한 형태가 되어 검증된 창구로 오인된다.
-        return PhoneVerdict(e164, ntype, CANDIDATE, "", SOURCE_MAP_PHONE_GUESS)
+        # 추측이라는 사실은 링크를 감추는 것이 아니라 상태·근거로 표시한다.
+        # 링크가 없으면 담당자가 번호를 손으로 옮겨야 해서 불편만 커진다.
+        return PhoneVerdict(e164, ntype, CANDIDATE, wa_link(e164), SOURCE_MAP_PHONE_GUESS)
     return PhoneVerdict(e164, ntype, UNLIKELY, "", SOURCE_NONE)
 
 

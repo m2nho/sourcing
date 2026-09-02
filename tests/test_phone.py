@@ -89,10 +89,11 @@ def test_classify_mobile_is_candidate():
     assert v.e164 == "+6281234567890"
 
 
-def test_candidate_gets_no_wa_link():
-    # candidate는 추측이다. 클릭 가능한 링크로 포장하면 검증된 창구로 오인된다.
+def test_candidate_also_gets_a_wa_link():
+    # 링크를 빼면 담당자가 번호를 손으로 옮겨야 한다. 추측이라는 사실은
+    # 링크를 감추는 것이 아니라 상태와 근거로 표시해 전달한다.
     v = classify("0812-3456-7890", "https://rscontoh.co.id", "ID")
-    assert v.wa_link == ""
+    assert v.wa_link == "https://wa.me/6281234567890"
 
 
 def test_confirmed_keeps_its_wa_link():

@@ -37,6 +37,21 @@ _COLUMN_WIDTHS = (38, 52, 18, 30, 8, 16, 32, 42, 42)
 
 _HEADER_FILL = PatternFill("solid", fgColor="1F4E79")
 
+#: 등급별 색. 링크는 모두에게 주므로 신뢰도 차이는 색으로 알린다.
+_STATUS_FILLS = {
+    "confirmed": PatternFill("solid", fgColor="C6E0B4"),  # 초록 - 업체가 선언
+    "verified": PatternFill("solid", fgColor="BDD7EE"),   # 파랑 - 프로필 확인
+    "candidate": PatternFill("solid", fgColor="FFE699"),  # 노랑 - 미확인 추측
+}
+
+
+def _status_of(label: str | None) -> str:
+    """엑셀에 찍힌 한국어 라벨을 내부 상태값으로 되돌린다."""
+    for status, text in _STATUS_LABELS.items():
+        if text == label:
+            return status
+    return ""
+
 
 def write_xlsx(records: Iterable[PlaceRecord], path: Path) -> int:
     """연락 가능한 레코드를 엑셀로 쓴다. 쓴 행 수를 돌려준다."""
@@ -70,6 +85,11 @@ def write_xlsx(records: Iterable[PlaceRecord], path: Path) -> int:
                 record.maps_url,
             ]
         )
+
+    for row in sheet.iter_rows(min_row=2):
+        fill = _STATUS_FILLS.get(_status_of(row[4].value))
+        if fill is not None:
+            row[4].fill = fill
 
     for index, width in enumerate(_COLUMN_WIDTHS, start=1):
         sheet.column_dimensions[get_column_letter(index)].width = width
