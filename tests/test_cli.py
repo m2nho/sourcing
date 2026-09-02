@@ -45,7 +45,8 @@ def test_args_defaults():
     assert args.region == "ID"
     assert args.lang == "en"
     assert args.center is None
-    assert args.grid == 3
+    assert args.grid == 0          # 0이면 cell_km에서 자동 계산
+    assert args.cell_km == 4.0
     assert args.radius_km == 10.0
 
 

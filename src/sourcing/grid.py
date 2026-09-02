@@ -36,6 +36,23 @@ def zoom_for(cell_diameter_km: float) -> int:
     return max(MIN_ZOOM, min(MAX_ZOOM, raw))
 
 
+def grid_for_cell(radius_km: float, cell_km: float) -> int:
+    """셀 한 변이 cell_km 이하가 되는 최소 격자 수.
+
+    구글 맵은 뷰포트가 넓으면 같은 장소만 반복해서 돌려준다. 실측에서 셀이
+    8km일 때 첫 타일이 260건 중 156건을 먹고 나머지 타일은 중복만 나왔다.
+    셀을 4km로 줄이니 같은 반경에서 218곳이 769곳이 됐다.
+
+    사람이 격자 수를 계산하는 것보다 "한 번에 몇 km를 볼지"를 정하는 편이
+    자연스러워서 이 함수를 둔다.
+    """
+    if cell_km <= 0:
+        raise ValueError("cell_km must be > 0")
+    if radius_km <= 0:
+        return 1
+    return max(1, math.ceil((2 * radius_km) / cell_km))
+
+
 def plan_tiles(
     center: tuple[float, float] | None, radius_km: float, n: int
 ) -> list[Tile | None]:

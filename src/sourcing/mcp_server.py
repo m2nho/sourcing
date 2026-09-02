@@ -74,7 +74,8 @@ def start_collection(
     lat: float,
     lng: float,
     radius_km: float = 12.0,
-    grid: int = 3,
+    grid: int = 0,
+    cell_km: float = 4.0,
     limit: int = 0,
     lang: str = "en",
     crawl: bool = True,
@@ -91,7 +92,10 @@ def start_collection(
         lat: 검색 중심 위도. 도시명을 좌표로 바꿔서 넘겨라.
         lng: 검색 중심 경도.
         radius_km: 격자가 덮을 반경.
-        grid: 한 변의 타일 수. 구글 맵은 검색당 약 120건에서 잘리므로 넓은 지역은 격자로 쪼갠다.
+        grid: 한 변의 타일 수. 0이면 cell_km에서 자동 계산한다. 보통 건드릴 필요 없다.
+        cell_km: 검색 한 번이 덮을 범위(km). 구글 맵은 뷰포트가 넓으면 같은 장소만
+            반복해서 돌려준다 - 실측에서 셀 8km일 때 첫 타일이 260건 중 156건을 먹고
+            나머지는 중복이었다. 4km가 실측으로 검증된 값이다(218곳 -> 769곳). 더 촘촘히 보려면 3km로 줄이되 타일 수가 늘어 오래 걸린다.
         limit: 수집할 최대 장소 수. 0이면 제한 없음.
         lang: 구글 맵 UI 언어.
         crawl: 웹사이트를 훑어 WhatsApp 링크를 찾을지. 끄면 훨씬 빠르지만
@@ -124,9 +128,11 @@ def start_collection(
         "--lang", lang,
         f"--center={lat:.6f},{lng:.6f}",
         "--radius-km", str(radius_km),
-        "--grid", str(grid),
+        "--cell-km", str(cell_km),
         "--out", str(out_csv),
     ]
+    if grid:
+        command += ["--grid", str(grid)]
     if limit:
         command += ["--limit", str(limit)]
     if not crawl:

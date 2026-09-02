@@ -14,7 +14,7 @@ import phonenumbers
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 
 from sourcing import maps
-from sourcing.grid import plan_tiles, search_url
+from sourcing.grid import grid_for_cell, plan_tiles, search_url
 from sourcing.parse import cid_from_url, parse_panel
 from sourcing.phone import CONFIRMED, classify
 from sourcing.crawl import branch_records, wa_numbers_from_html
@@ -87,7 +87,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--out", type=Path, default=None, help="CSV 출력 경로")
     parser.add_argument("--center", type=parse_center, default=None, help="격자 중심 LAT,LNG")
     parser.add_argument("--radius-km", type=float, default=10.0, help="격자 반경 km")
-    parser.add_argument("--grid", type=int, default=3, help="한 변의 타일 수 (N x N)")
+    parser.add_argument(
+        "--grid",
+        type=int,
+        default=0,
+        help="한 변의 타일 수 (N x N). 0이면 --cell-km에서 자동 계산한다",
+    )
+    parser.add_argument(
+        "--cell-km",
+        type=float,
+        default=4.0,
+        help="검색 한 번이 덮을 범위(km). 작을수록 촘촘하지만 오래 걸린다. "
+        "넓게 잡으면 구글이 같은 장소만 반복해서 돌려준다",
+    )
     parser.add_argument("--delay", type=parse_delay, default=(1.5, 3.5), help="대기 MIN,MAX 초")
     parser.add_argument("--limit", type=int, default=0, help="수집할 최대 장소 수 (0=제한 없음)")
     parser.add_argument(
@@ -144,7 +156,8 @@ def main(argv: list[str] | None = None) -> int:
     if seen:
         print(f"기존 {len(seen)}건을 이어받아 재개합니다.")
 
-    tiles = plan_tiles(args.center, args.radius_km, args.grid)
+    grid = args.grid or grid_for_cell(args.radius_km, args.cell_km)
+    tiles = plan_tiles(args.center, args.radius_km, grid)
     delay_min, delay_max = args.delay
     collected = 0
     exit_code = EXIT_OK
