@@ -105,3 +105,57 @@ def test_branch_records_do_not_mutate_the_input():
     branch_records(base, ["+6281100000001"])
     assert base.whatsapp_status == "unlikely"
     assert base.phone_e164 == "+62213915000"
+
+
+# ── tel: 링크에 WhatsApp 라벨이 붙은 형태 ──────────────────────────
+# 실측(런던 Dr Hala): 업체가 wa.me 대신 tel: 링크를 쓰고 옆에 WhatsApp이라고
+# 적어두는 경우가 있다. 이것도 선언이므로 읽는다. 다만 "전화 또는 WhatsApp"
+# 처럼 두 링크가 나란한 문장에서 엉뚱한 쪽을 집으면 안 된다.
+
+
+def test_tel_link_whose_anchor_says_whatsapp():
+    html = '<a href="tel:+447488732737">WhatsApp</a>'
+    assert wa_numbers_from_html(html, region="GB") == ["+447488732737"]
+
+
+def test_tel_link_preceded_by_a_whatsapp_label():
+    html = 'WhatsApp Us: <a href="tel:+447776103599">0777 610 3599</a>'
+    assert wa_numbers_from_html(html, region="GB") == ["+447776103599"]
+
+
+def test_plain_tel_link_is_not_a_whatsapp_number():
+    assert wa_numbers_from_html('<a href="tel:+442073718939">Call us</a>', region="GB") == []
+
+
+def test_call_link_next_to_a_whatsapp_link_is_not_picked_up():
+    # 실제 Dr Hala 마크업의 형태다. 020은 '전화', 07은 'WhatsApp'이다.
+    html = (
+        '<a href="tel:+442073718939">give us a call</a> or drop us a '
+        '<a href="tel:+447488732737">WhatsApp</a> anytime'
+    )
+    assert wa_numbers_from_html(html, region="GB") == ["+447488732737"]
+
+
+def test_tel_numbers_need_a_region_to_be_read():
+    # 지역 정보가 없으면 국내 표기(07...)를 정규화할 수 없다. 조용히 틀린
+    # 번호를 만드느니 읽지 않는다.
+    assert wa_numbers_from_html('<a href="tel:07488732737">WhatsApp</a>') == []
+
+
+def test_local_format_tel_number_is_normalised_with_the_region():
+    assert wa_numbers_from_html('<a href="tel:07488732737">WhatsApp</a>', region="GB") == [
+        "+447488732737"
+    ]
+
+
+def test_wa_me_links_still_come_first():
+    html = (
+        '<a href="tel:+447488732737">WhatsApp</a>'
+        '<a href="https://wa.me/447776103599">Chat</a>'
+    )
+    # 선언이 더 명확한 wa.me를 앞에 둔다
+    assert wa_numbers_from_html(html, region="GB") == ["+447776103599", "+447488732737"]
+
+
+def test_invalid_tel_number_is_rejected():
+    assert wa_numbers_from_html('<a href="tel:+441234">WhatsApp</a>', region="GB") == []

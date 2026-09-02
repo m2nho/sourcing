@@ -177,7 +177,7 @@ def main(argv: list[str] | None = None) -> int:
                         continue
 
                     record = build_record(fields, args.region, args.keyword, label)
-                    records = _confirm_from_site(site_page, record, args.crawl)
+                    records = _confirm_from_site(site_page, record, args.crawl, args.region)
                     for item in records:
                         store.append(item)
                         seen.add(item.place_cid)
@@ -236,7 +236,9 @@ def _with_block_retry(page, args, action):
         return action()
 
 
-def _confirm_from_site(site_page, record: PlaceRecord, enabled: bool) -> list[PlaceRecord]:
+def _confirm_from_site(
+    site_page, record: PlaceRecord, enabled: bool, region: str = ""
+) -> list[PlaceRecord]:
     """웹사이트에서 선언된 WhatsApp 번호를 찾아 레코드를 확정으로 승격시킨다.
 
     맵 리스팅만으로는 확정이 거의 나오지 않으므로(실측 709건 중 1건), 사이트가
@@ -254,7 +256,7 @@ def _confirm_from_site(site_page, record: PlaceRecord, enabled: bool) -> list[Pl
         print(f"    ~ 사이트 열기 실패({record.website}): {exc}", file=sys.stderr)
         return [record]
 
-    numbers = wa_numbers_from_html(html)
+    numbers = wa_numbers_from_html(html, region)
     if not numbers:
         return [record]
     return branch_records(record, numbers)

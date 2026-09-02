@@ -15,7 +15,7 @@ import html as html_module
 import re
 from dataclasses import replace
 
-from sourcing.phone import CONFIRMED, wa_number_from_url, wa_link
+from sourcing.phone import CONFIRMED, normalize, wa_number_from_url, wa_link
 from sourcing.store import (
     SOURCE_SITE_CONFIRMS_MAP,
     SOURCE_SITE_LINK,
@@ -37,11 +37,18 @@ WA_URL_PATTERN = re.compile(
 BRANCH_SEPARATOR = "#"
 
 
-def wa_numbers_from_html(html: str) -> list[str]:
+def wa_numbers_from_html(html: str, region: str = "") -> list[str]:
     """HTML에서 선언된 WhatsApp 번호를 등장 순서대로. 없으면 빈 리스트.
 
-    번호는 phone.wa_number_from_url의 검증 관문을 통과한 것만 남는다 —
-    wa.me/message/<코드> 같은 단축링크와 유효하지 않은 번호는 걸러진다.
+    두 가지 선언 형태를 읽는다.
+
+    1. wa.me / api.whatsapp.com 링크 — 가장 명확하다. 먼저 나온다.
+    2. tel: 링크에 WhatsApp 라벨이 붙은 것 — 실측(런던 Dr Hala)에서 나왔다.
+       업체가 링크는 tel:로 걸고 옆에 "WhatsApp"이라고 적어두는 형태다.
+       국내 표기(07...)일 수 있어 region이 있어야 읽는다. 없으면 조용히
+       틀린 번호를 만드느니 읽지 않는다.
+
+    번호는 모두 phonenumbers 검증을 통과한 것만 남는다.
     """
     if not html or not html.strip():
         return []
@@ -49,11 +56,18 @@ def wa_numbers_from_html(html: str) -> list[str]:
     text = _unescape(html)
     numbers: list[str] = []
     seen: set[str] = set()
+
     for match in WA_URL_PATTERN.findall(text):
         number = wa_number_from_url(_normalize_url(match))
         if number and number not in seen:
             seen.add(number)
             numbers.append(number)
+
+    for number in _whatsapp_labelled_tel_numbers(text, region):
+        if number not in seen:
+            seen.add(number)
+            numbers.append(number)
+
     return numbers
 
 
@@ -82,6 +96,48 @@ def branch_records(base: PlaceRecord, numbers: list[str]) -> list[PlaceRecord]:
         )
         for index, number in enumerate(numbers)
     ]
+
+
+#: tel: 링크와 그 앵커 텍스트.
+TEL_LINK_PATTERN = re.compile(r'<a[^>]+href="tel:([^"]+)"[^>]*>(.*?)</a>', re.IGNORECASE | re.DOTALL)
+
+#: 라벨을 찾을 때 링크 앞쪽으로 훑는 범위. 넓히면 "전화 또는 WhatsApp"처럼
+#: 두 링크가 나란한 문장에서 엉뚱한 쪽을 집게 된다.
+LABEL_WINDOW = 80
+
+
+def _whatsapp_labelled_tel_numbers(text: str, region: str) -> list[str]:
+    """앵커 텍스트나 바로 앞 라벨이 WhatsApp이라고 말하는 tel: 번호."""
+    if not region:
+        return []
+
+    found: list[str] = []
+    for match in TEL_LINK_PATTERN.finditer(text):
+        raw, anchor = match.group(1), _strip_tags(match.group(2))
+        if not _labelled_whatsapp(text, match.start(), anchor):
+            continue
+        e164, _ = normalize(raw, region)
+        if e164:
+            found.append(e164)
+    return found
+
+
+def _labelled_whatsapp(text: str, link_start: int, anchor: str) -> bool:
+    """이 tel: 링크가 WhatsApp이라고 표시돼 있는가.
+
+    앵커 텍스트가 우선이다. 앞쪽 라벨도 보되, 그 사이에 다른 링크가 끝난
+    흔적(`</a>`)이 있으면 남의 라벨이므로 인정하지 않는다.
+    """
+    if "whatsapp" in anchor.lower():
+        return True
+    before = text[max(0, link_start - LABEL_WINDOW) : link_start]
+    if "</a>" in before:
+        return False
+    return "whatsapp" in _strip_tags(before).lower()
+
+
+def _strip_tags(fragment: str) -> str:
+    return re.sub(r"<[^>]+>", " ", fragment)
 
 
 def _unescape(html: str) -> str:
