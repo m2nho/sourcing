@@ -19,6 +19,18 @@ SOURCE_PROFILE = "profile"                      # WhatsApp 프로필 조회로 �
 SOURCE_PROFILE_MISMATCH = "profile_mismatch"    # 프로필은 있으나 이름이 상호와 다름
 SOURCE_NONE = ""                                # 근거 없음
 
+#: 프로필 조회를 했는지, 했다면 무엇이 나왔는지. profile_name 하나로는
+#: "조회했는데 이름이 없다"와 "조회 자체를 못 했다"가 구별되지 않는다.
+#: 앞의 것은 재조회해도 같지만 뒤의 것은 건질 수 있어서 나눠야 한다.
+PROFILE_FOUND = "found"     # 프로필 이름을 읽었다
+PROFILE_NONE = "none"       # 조회했으나 번호만 보였다 (개인 계정이거나 미등록)
+PROFILE_ERROR = "error"     # 조회 자체가 실패했다 (타임아웃 등). 재시도 가치 있음
+
+PROFILE_LABELS = {
+    PROFILE_NONE: "(개인 또는 미등록)",
+    PROFILE_ERROR: "(확인 실패)",
+}
+
 #: 사람이 읽는 라벨. 엑셀에 이 문구가 그대로 들어간다.
 SOURCE_LABELS = {
     SOURCE_MAP_LINK: "구글맵 링크",
@@ -45,6 +57,7 @@ class PlaceRecord:
     whatsapp_status: str = "unlikely"
     source: str = ""
     profile_name: str = ""
+    profile_checked: str = ""
     wa_link: str = ""
     website: str = ""
     rating: str = ""

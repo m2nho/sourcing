@@ -20,7 +20,7 @@ from sourcing.phone import CONFIRMED, classify
 from sourcing.crawl import branch_records, wa_numbers_from_html
 from sourcing.excel import write_xlsx
 from sourcing.store import JsonlStore, PlaceRecord, export_csv
-from sourcing.verify import apply_profile
+from sourcing.verify import apply_profile, mark_lookup_failed
 
 EXIT_OK = 0
 EXIT_BLOCKED = 2
@@ -306,5 +306,5 @@ def _verify_profile(site_page, record: PlaceRecord, enabled: bool) -> PlaceRecor
         name = maps.fetch_wa_profile(site_page, record.phone_e164)
     except Exception as exc:  # noqa: BLE001 - 조회 실패로 수집을 멈추지 않는다
         print(f"    ~ 프로필 조회 실패({record.phone_e164}): {exc}", file=sys.stderr)
-        return record
+        return mark_lookup_failed(record)
     return apply_profile(record, name)

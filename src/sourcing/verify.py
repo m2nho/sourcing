@@ -14,7 +14,14 @@ import re
 from dataclasses import replace
 
 from sourcing.phone import CONFIRMED, VERIFIED, wa_link
-from sourcing.store import SOURCE_PROFILE, SOURCE_PROFILE_MISMATCH, PlaceRecord
+from sourcing.store import (
+    PROFILE_ERROR,
+    PROFILE_FOUND,
+    PROFILE_NONE,
+    SOURCE_PROFILE,
+    SOURCE_PROFILE_MISMATCH,
+    PlaceRecord,
+)
 
 #: 프로필 이름이 병원명과 같은 곳인지 보는 기준. 실측(런던 4건)에서 맞는
 #: 짝은 0.67 이상, 무관한 짝은 훨씬 아래였다.
@@ -55,7 +62,7 @@ def apply_profile(record: PlaceRecord, profile_name: str) -> PlaceRecord:
     if not record.phone_e164:
         return record
     if not profile_name:
-        return replace(record, profile_name="")
+        return replace(record, profile_name="", profile_checked=PROFILE_NONE)
 
     if not profile_matches(record.name, profile_name):
         # 번호가 WhatsApp에 있다는 것은 확인된 사실이므로 링크는 준다.
@@ -68,10 +75,11 @@ def apply_profile(record: PlaceRecord, profile_name: str) -> PlaceRecord:
             source=SOURCE_PROFILE_MISMATCH,
             wa_link=wa_link(record.phone_e164),
             profile_name=profile_name,
+            profile_checked=PROFILE_FOUND,
         )
 
     if record.whatsapp_status == CONFIRMED:
-        return replace(record, profile_name=profile_name)
+        return replace(record, profile_name=profile_name, profile_checked=PROFILE_FOUND)
 
     return replace(
         record,
@@ -79,6 +87,7 @@ def apply_profile(record: PlaceRecord, profile_name: str) -> PlaceRecord:
         source=SOURCE_PROFILE,
         wa_link=wa_link(record.phone_e164),
         profile_name=profile_name,
+        profile_checked=PROFILE_FOUND,
     )
 
 
@@ -90,3 +99,12 @@ def _core(name: str) -> str:
 def _ratio(a: str, b: str) -> float:
     norm = lambda s: re.sub(r"[^a-z0-9]", "", s.lower())  # noqa: E731
     return difflib.SequenceMatcher(None, norm(a), norm(b)).ratio()
+
+
+def mark_lookup_failed(record: PlaceRecord) -> PlaceRecord:
+    """조회 자체가 실패했음을 남긴다. 등급은 건드리지 않는다.
+
+    '조회했는데 이름이 없다'와 구분해야 나중에 실패한 것만 골라 다시 볼 수
+    있다. 전체를 재조회하는 것보다 훨씬 싸다.
+    """
+    return replace(record, profile_checked=PROFILE_ERROR)

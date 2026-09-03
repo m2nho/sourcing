@@ -26,6 +26,7 @@ from sourcing.store import (
     SOURCE_SITE_CONFIRMS_MAP,
     SOURCE_SITE_LINK,
     SOURCE_LABELS,
+    PROFILE_LABELS,
     JsonlStore,
     PlaceRecord,
 )
@@ -75,6 +76,12 @@ _SOURCE_NOTES = [
     (SOURCE_MAP_PHONE_GUESS, "구글맵 대표번호가 모바일 번호대다. 실제 등록 여부는 확인되지 않았다"),
 ]
 
+#: WhatsApp 프로필 칸에 이름 대신 들어가는 값의 뜻.
+_PROFILE_NOTES = [
+    ("(개인 또는 미등록)", "번호를 조회했지만 이름이 보이지 않았다. WhatsApp은 비즈니스 계정의 이름만 공개한다 - 개인 계정으로 쓰는 곳이거나 미등록이며, 이 둘은 구별할 수 없다"),
+    ("(확인 실패)", "조회 자체가 되지 않았다(접속 실패·시간 초과). 다시 조회하면 결과가 나올 수 있다"),
+]
+
 _NOTE_HEADER = Font(bold=True, color="FFFFFF")
 
 
@@ -97,6 +104,14 @@ def _write_legend(workbook) -> None:
         cell.fill = _HEADER_FILL
     for source, meaning in _SOURCE_NOTES:
         sheet.append([SOURCE_LABELS[source], meaning])
+
+    sheet.append([])
+    sheet.append(["WhatsApp 프로필", "뜻"])
+    for cell in sheet[sheet.max_row]:
+        cell.font = _NOTE_HEADER
+        cell.fill = _HEADER_FILL
+    for label, meaning in _PROFILE_NOTES:
+        sheet.append([label, meaning])
 
     sheet.append([])
     sheet.append(["참고", "모든 행에 클릭 가능한 wa.me 링크가 있다. 신뢰도 차이는 상태 색과 근거로 표시한다"])
@@ -143,7 +158,7 @@ def write_xlsx(records: Iterable[PlaceRecord], path: Path) -> int:
                 record.wa_link,
                 _STATUS_LABELS.get(record.whatsapp_status, record.whatsapp_status),
                 SOURCE_LABELS.get(record.source, record.source),
-                record.profile_name,
+                record.profile_name or PROFILE_LABELS.get(record.profile_checked, ""),
                 record.query,
                 record.website,
                 record.maps_url,

@@ -129,3 +129,45 @@ def test_mismatch_does_not_downgrade_a_confirmed_record():
     out = apply_profile(base(status="confirmed", source=SOURCE_SITE_LINK), "Isabella")
     assert out.whatsapp_status == "confirmed"
     assert out.source == SOURCE_SITE_LINK
+
+
+# ── 조회하지 못한 것과 조회했는데 없는 것을 구분한다 ──────────────────
+# 둘 다 profile_name이 빈 값이면 재조회로 건질 수 있는 것과 그래도 소용없는
+# 것이 섞인다. 확정 49건 중 몇이 타임아웃이었는지 알 수 없었다.
+
+
+def test_lookup_with_no_name_is_recorded_as_checked():
+    from sourcing.store import PROFILE_NONE
+
+    out = apply_profile(base(), "")
+    assert out.profile_checked == PROFILE_NONE
+    assert out.profile_name == ""
+
+
+def test_found_profile_is_recorded_as_found():
+    from sourcing.store import PROFILE_FOUND
+
+    out = apply_profile(base(), "Bayati Clinic")
+    assert out.profile_checked == PROFILE_FOUND
+
+
+def test_lookup_failure_is_recorded_separately():
+    from sourcing.store import PROFILE_ERROR
+    from sourcing.verify import mark_lookup_failed
+
+    out = mark_lookup_failed(base())
+    assert out.profile_checked == PROFILE_ERROR
+    assert out.profile_name == ""
+    assert out.whatsapp_status == "candidate"  # 등급은 건드리지 않는다
+
+
+def test_a_record_never_checked_stays_blank():
+    assert base().profile_checked == ""
+
+
+def test_mismatched_profile_counts_as_found():
+    from sourcing.store import PROFILE_FOUND
+
+    out = apply_profile(base(), "Isabella")
+    assert out.profile_checked == PROFILE_FOUND
+    assert out.profile_name == "Isabella"
