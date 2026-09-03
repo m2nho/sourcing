@@ -77,6 +77,44 @@ uv run sourcing "<키워드>" --region <ISO> --lang <언어> \
 
 출력 파일 이름에 지역을 넣어라: `out/seoul-gangnam-klinik.csv`.
 
+### 여러 지구를 돌리고 합치는 법
+
+`scripts/sweep`이 지구 목록을 받아 순차로 돌리고 마지막에 합친다.
+**동시에 돌리지 마라** — 브라우저가 하나뿐이고 동시 접속은 차단 위험을 키운다.
+
+```bash
+scripts/sweep scripts/districts-london.txt "aesthetic clinic" GB london
+```
+
+지구 목록 형식(`scripts/districts-london.txt` 참고):
+
+```
+이름|위도,경도|반경km|셀km
+Harley-Street|51.5205,-0.1490|2|1.5
+```
+
+새 도시는 같은 형식으로 `scripts/districts-<도시>.txt`를 만든다. 좌표는
+네가 안다. 사용자에게 묻지 마라.
+
+이미 결과 파일이 있는 지구는 건너뛰므로, 중간에 멈춰도 다시 실행하면
+이어서 간다. 지구 하나가 실패해도 나머지는 계속 돈다.
+
+### 합치기
+
+지구별로 돌리면 파일이 여럿이 되고, 지구 경계에 걸친 클리닉이 중복된다.
+**반드시 합쳐서 하나의 엑셀로 전달한다.**
+
+```bash
+uv run sourcing-merge out/london-*.raw.jsonl --out out/london-ALL.xlsx
+```
+
+같은 곳이 여러 번 나오면 근거가 더 강한 쪽을 남긴다 — 한 지구에서
+추정이었지만 다른 지구에서 확정으로 잡혔다면 확정이 맞다. 실측: 런던
+8개 지구 896건이 중복 제거 후 667건이 됐다.
+
+`sweep`은 마지막에 이것을 자동으로 한다. 개별 실행을 섞어 돌렸다면 직접
+불러야 한다.
+
 ### 밀도가 높은 지구는 셀을 더 좁혀라
 
 `cell_km` 기본 4km는 도시 외곽까지 포함한 넓은 범위 기준이다. 클리닉이
