@@ -35,7 +35,7 @@ def test_headers_are_the_slim_set(tmp_path):
     assert header == EXCEL_HEADERS
     assert header == [
         "병원명", "위치", "전화번호", "WhatsApp 링크", "상태", "근거",
-        "WhatsApp 프로필", "홈페이지", "구글맵",
+        "WhatsApp 프로필", "검색어", "홈페이지", "구글맵",
     ]
 
 
@@ -61,8 +61,8 @@ def test_rows_carry_both_links(tmp_path):
         out,
     )
     row = [c.value for c in sheet(out)[2]]
-    assert row[7] == "https://klinik.co.id/"
-    assert row[8] == "https://maps.google.com/x"
+    assert row[8] == "https://klinik.co.id/"
+    assert row[9] == "https://maps.google.com/x"
 
 
 def test_missing_links_leave_the_cell_empty(tmp_path):
@@ -71,8 +71,8 @@ def test_missing_links_leave_the_cell_empty(tmp_path):
     out = tmp_path / "leads.xlsx"
     write_xlsx([rec("A", "confirmed", SOURCE_SITE_LINK)], out)
     row = [c.value for c in sheet(out)[2]]
-    assert not row[7]
     assert not row[8]
+    assert not row[9]
 
 
 def test_rows_carry_name_and_location(tmp_path):
@@ -231,3 +231,15 @@ def test_data_sheet_is_the_first_one(tmp_path):
     write_xlsx([rec("A", "confirmed", SOURCE_SITE_LINK)], out)
     book = load_workbook(out)
     assert book.sheetnames[0] == "리드"
+
+
+def test_search_term_column_shows_where_the_lead_came_from(tmp_path):
+    """여러 지역을 합친 파일에서는 어느 검색으로 찾았는지가 중요하다."""
+    out = tmp_path / "leads.xlsx"
+    r = rec("A", "confirmed", SOURCE_SITE_LINK)
+    r.query = "aesthetic clinic Knightsbridge"
+    write_xlsx([r], out)
+    ws = sheet(out)
+    assert "검색어" in [c.value for c in ws[1]]
+    idx = [c.value for c in ws[1]].index("검색어")
+    assert ws.cell(2, idx + 1).value == "aesthetic clinic Knightsbridge"

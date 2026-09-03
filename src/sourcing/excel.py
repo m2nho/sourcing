@@ -32,7 +32,7 @@ from sourcing.store import (
 
 EXCEL_HEADERS = [
     "병원명", "위치", "전화번호", "WhatsApp 링크", "상태", "근거",
-    "WhatsApp 프로필", "홈페이지", "구글맵",
+    "WhatsApp 프로필", "검색어", "홈페이지", "구글맵",
 ]
 
 #: 연락할 수 없는 곳은 목록에 넣지 않는다. 원본은 CSV에 그대로 남아 있다.
@@ -43,7 +43,7 @@ _STATUS_ORDER = {"confirmed": 0, "verified": 1, "candidate": 2}
 
 _STATUS_LABELS = {"confirmed": "확정", "verified": "검증", "candidate": "추정"}
 
-_COLUMN_WIDTHS = (38, 52, 18, 30, 8, 16, 32, 42, 42)
+_COLUMN_WIDTHS = (38, 52, 18, 30, 8, 16, 32, 30, 42, 42)
 
 _HEADER_FILL = PatternFill("solid", fgColor="1F4E79")
 
@@ -144,6 +144,7 @@ def write_xlsx(records: Iterable[PlaceRecord], path: Path) -> int:
                 _STATUS_LABELS.get(record.whatsapp_status, record.whatsapp_status),
                 SOURCE_LABELS.get(record.source, record.source),
                 record.profile_name,
+                record.query,
                 record.website,
                 record.maps_url,
             ]
