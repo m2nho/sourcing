@@ -40,17 +40,45 @@ uv run pytest
 
 ## 사용
 
+### 도시 하나를 제대로 훑기 (권장)
+
+구글 맵은 뷰포트가 넓으면 같은 곳만 반복해서 돌려준다. 넓은 도시는 지구
+단위로 나눠 돌리고 합쳐야 한다. 실측: 런던을 반경 10km로 한 번 돌리면
+120곳, 8개 지구로 나누면 667곳이 나왔다.
+
 ```
-uv run sourcing "rumah sakit" --region ID --lang id --out out/jakarta.csv
-uv run sourcing "hospital" --region PH --center 14.60,120.98 --radius-km 25 --grid 4
+scripts/sweep scripts/districts-london.txt "aesthetic clinic" GB london
 ```
 
-주요 옵션은 `uv run sourcing --help`.
+지구 목록은 `이름|위도,경도|반경km|셀km` 형식이다(`scripts/districts-london.txt`
+참고). 순차로 돌고 마지막에 자동으로 합친다. 이미 결과가 있는 지구는
+건너뛰므로 중간에 멈춰도 다시 실행하면 이어서 간다.
 
-`--center` 없이 실행하면 구글이 실행 위치의 IP를 기준으로 뷰포트를 잡는다.
-특정 지역을 노리려면 `--center`로 좌표를 주거나 키워드에 지역명을 넣어라.
-음수 좌표는 `--center=-6.2,106.8`처럼 `=` 로 값을 붙여야 argparse가
-옵션 플래그로 오인하지 않는다.
+### 한 곳만 돌리기
+
+```
+uv run sourcing "klinik" --region ID --lang id --center=-6.2,106.8167
+uv run sourcing "aesthetic clinic" --region GB --center=51.5205,-0.1490 --radius-km 2 --cell-km 1.5
+```
+
+음수 좌표는 `--center=`처럼 `=`로 붙인다. 안 그러면 argparse가 옵션으로 오해한다.
+
+`--cell-km`이 "검색 한 번이 몇 km를 볼지"다. 기본 4km이고 격자는 여기서
+자동 계산된다. 클리닉이 밀집한 중심가는 1.5km까지 좁힌다.
+
+`--center` 없이 실행하면 구글이 실행 위치 IP를 기준으로 검색한다. 특정
+지역을 노리려면 좌표를 주거나 키워드에 지역명을 넣는다.
+
+### 여러 결과 합치기
+
+```
+uv run sourcing-merge out/london-*.raw.jsonl --out out/london-ALL.xlsx
+```
+
+지구 경계에 걸친 곳은 중복되므로 반드시 합쳐서 하나의 엑셀로 쓴다. 같은
+곳이 여러 번 나오면 근거가 더 강한 쪽을 남긴다.
+
+자세한 판단 기준은 `.claude/skills/lead-sourcing/SKILL.md`에 있다.
 
 ## WhatsApp 상태
 
