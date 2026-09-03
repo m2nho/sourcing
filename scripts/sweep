@@ -6,7 +6,9 @@
 # 동시에 돌리지 않는다. 브라우저가 하나뿐이고 동시 접속은 차단 위험을 키운다.
 #
 # 사용:
-#   scripts/sweep <지구목록파일> <키워드접두> <지역코드> <출력접두>
+#   scripts/sweep <지구목록파일> <키워드접두> <지역코드> <도시이름>
+#
+# 결과는 out/<도시이름>/ 아래에 지구별 파일과 ALL.xlsx로 나온다.
 #
 # 지구목록 파일 형식 (# 로 시작하는 줄은 주석):
 #   이름|위도,경도|반경km|셀km
@@ -20,12 +22,13 @@ PREFIX=${4:?출력 접두가 필요합니다}
 LANG_CODE=${5:-en}
 
 cd "$(dirname "$0")/.."
-LOG="out/${PREFIX}_sweep.log"
-mkdir -p out
+DIR="out/${PREFIX}"
+LOG="${DIR}/_sweep.log"
+mkdir -p "$DIR"
 
 while IFS='|' read -r name center radius cell; do
   [[ -z "${name:-}" || "$name" == \#* ]] && continue
-  out="out/${PREFIX}-${name}.csv"
+  out="${DIR}/${name}.csv"
   if [ -f "$out" ]; then
     echo "$(date +%H:%M) $name 이미 있음, 건너뜀" | tee -a "$LOG"
     continue
@@ -39,4 +42,4 @@ while IFS='|' read -r name center radius cell; do
 done < "$LIST"
 
 echo "$(date +%H:%M) 전체 수집 완료. 합치는 중..." | tee -a "$LOG"
-uv run sourcing-merge out/${PREFIX}-*.raw.jsonl --out "out/${PREFIX}-ALL.xlsx" | tee -a "$LOG"
+uv run sourcing-merge "$DIR"/*.raw.jsonl --out "${DIR}/ALL.xlsx" | tee -a "$LOG"
