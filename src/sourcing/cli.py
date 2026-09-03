@@ -20,6 +20,7 @@ from sourcing.phone import CONFIRMED, classify
 from sourcing.crawl import branch_records, wa_numbers_from_html
 from sourcing.excel import write_xlsx
 from sourcing.store import JsonlStore, PlaceRecord, export_csv
+from sourcing.throttle import ThrottleWatch
 from sourcing.verify import apply_profile, mark_lookup_failed
 
 EXIT_OK = 0
@@ -165,6 +166,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with maps.browser(args.profile, args.headful, args.lang) as page:
             site_page = _open_site_page(page) if args.crawl else None
+            watch = ThrottleWatch()
             for index, tile in enumerate(tiles, start=1):
                 label = tile.label if tile else ""
                 url = search_url(args.keyword, tile, args.lang)
@@ -198,7 +200,9 @@ def main(argv: list[str] | None = None) -> int:
 
                     record = build_record(fields, args.region, args.keyword, label)
                     records = _confirm_from_site(site_page, record, args.crawl, args.region)
-                    records = [_verify_profile(site_page, item, args.verify) for item in records]
+                    records = [
+                        _verify_profile(site_page, item, args.verify, watch) for item in records
+                    ]
                     for item in records:
                         store.append(item)
                         seen.add(item.place_cid)
@@ -292,7 +296,9 @@ def _open_site_page(page):
         return None
 
 
-def _verify_profile(site_page, record: PlaceRecord, enabled: bool) -> PlaceRecord:
+def _verify_profile(
+    site_page, record: PlaceRecord, enabled: bool, watch: ThrottleWatch | None = None
+) -> PlaceRecord:
     """번호가 실제 WhatsApp에 있는지 확인해 등급에 반영한다.
 
     추측(candidate)과 확인된 것을 구분하기 위한 단계다. 실측에서 모바일
@@ -302,9 +308,36 @@ def _verify_profile(site_page, record: PlaceRecord, enabled: bool) -> PlaceRecor
     """
     if not enabled or site_page is None or not record.phone_e164:
         return record
+    if watch is not None and watch.throttled:
+        # 막힌 뒤의 빈 응답을 '개인/미등록'으로 적으면 틀린 답을 확신에 차서
+        # 저장하게 된다. 확인하지 못했다고 남긴다.
+        return mark_lookup_failed(record)
+
     try:
         name = maps.fetch_wa_profile(site_page, record.phone_e164)
     except Exception as exc:  # noqa: BLE001 - 조회 실패로 수집을 멈추지 않는다
         print(f"    ~ 프로필 조회 실패({record.phone_e164}): {exc}", file=sys.stderr)
         return mark_lookup_failed(record)
+
+    if watch is not None:
+        watch.record(record.phone_e164, name)
+        if watch.should_check_canary():
+            _check_canary(site_page, watch)
+            if watch.throttled:
+                return mark_lookup_failed(record)
     return apply_profile(record, name)
+
+
+def _check_canary(site_page, watch: ThrottleWatch) -> None:
+    """이름이 나왔던 번호를 다시 조회해 조회가 살아 있는지 본다."""
+    try:
+        again = maps.fetch_wa_profile(site_page, watch.canary)
+    except Exception:  # noqa: BLE001
+        again = ""
+    watch.canary_result(again)
+    if watch.throttled:
+        print(
+            "    ! WhatsApp 프로필 조회가 막혔습니다. 이후 번호는 '확인 실패'로 남깁니다.\n"
+            "      (수집과 웹사이트 크롤은 계속됩니다. 나중에 다시 조회하면 채워집니다.)",
+            file=sys.stderr,
+        )
