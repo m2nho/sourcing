@@ -19,6 +19,7 @@ dependencies = [
 sourcing = "sourcing.cli:main"
 sourcing-mcp = "sourcing.mcp_server:main"
 sourcing-merge = "sourcing.merge:main"
+sourcing-recheck = "sourcing.recheck:main"
 
 [build-system]
 requires = ["uv_build>=0.12.5,<0.13.0"]
